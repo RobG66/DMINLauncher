@@ -22,7 +22,7 @@
 ### WAD Files
 Place your DOOM WAD files in:
 ```
-/userdata/roms/doom/
+/userdata/roms/gzdoom/
 ```
 
 Supported files:
@@ -37,29 +37,23 @@ Supported files:
 ### Mods
 Place mod files (.wad, .pk3) in:
 ```
-/userdata/roms/doom/mods/
+/userdata/roms/gzdoom/mods/
 ```
 
 Or organize in subfolders:
 ```
-/userdata/roms/doom/mods/maps/
-/userdata/roms/doom/mods/weapons/
-/userdata/roms/doom/mods/gameplay/
+/userdata/roms/gzdoom/mods/maps/
+/userdata/roms/gzdoom/mods/weapons/
+/userdata/roms/gzdoom/mods/gameplay/
 ```
 
-### Total Conversions
-Place total conversion mods in:
-```
-/userdata/roms/doom/total-conversions/
-/userdata/roms/doom/tc/
-/userdata/roms/doom/conversions/
-```
+## Engine Detection
 
-## Default Engine
+**Batocera includes GZDoom at `/usr/bin/gzdoom`**
 
-Batocera includes GZDoom by default at `/usr/bin/gzdoom`
+The launcher will automatically detect it as **"gzdoom (system)"** - you don't need to set the engine directory to `/usr/bin`.
 
-The launcher will automatically detect it as "gzdoom (system)"
+Set the engine directory to a custom folder (like `/userdata/roms/ports/engines`) if you want to add other engines. The system `gzdoom` will still be auto-detected.
 
 ## Creating a Batocera Port Entry
 
@@ -87,9 +81,19 @@ chmod +x /userdata/roms/ports/DMINLauncher.sh
 3. Run from terminal to see errors: `./DMINLauncher-linux-x64`
 
 ### No WADs detected
-1. Check WAD folder: `ls /userdata/roms/doom/*.wad`
-2. Verify paths in `launcher.cfg`
+1. Check WAD folder: `ls /userdata/roms/gzdoom/*.wad`
+2. Verify paths in `launcher.cfg`:
+   ```
+   wads=/userdata/roms/gzdoom
+   engine=/userdata/roms/ports/engines
+   ```
 3. Click "Refresh" button in the app
+
+### No engines detected
+- The launcher should auto-detect `gzdoom (system)` from `/usr/bin/gzdoom`
+- If it doesn't appear, run `which gzdoom` to verify it's in PATH
+- Don't set engine directory to `/usr/bin` - it will scan hundreds of files
+- Use a dedicated folder or leave it pointing to a non-existent path
 
 ### File dialogs don't work
 This is a known issue with Batocera's minimal desktop environment. Use the configuration file method instead:

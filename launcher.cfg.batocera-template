@@ -6,8 +6,9 @@
 # Batocera default DOOM WADs location
 wads=/userdata/roms/gzdoom
 
-# Engine executable (default Batocera GZDoom)
-engine=/usr/bin
+# Engine directory - leave empty or point to custom engines folder
+# System engines (gzdoom in /usr/bin) are auto-detected via PATH
+engine=/userdata/roms/ports/engines
 
 # Game settings
 difficulty=2
