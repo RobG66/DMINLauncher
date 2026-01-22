@@ -86,6 +86,7 @@ jobs:
           
           **Batocera:**
           - See [BATOCERA-SETUP.md](https://github.com/RobG66/DMINLauncher/blob/main/BATOCERA-SETUP.md)
+          - Download `launcher.cfg.batocera-template` for configuration template
           
           ### 📋 Requirements
           - DOOM WAD files (purchase from Steam/GOG or use Freedoom)
@@ -97,17 +98,6 @@ jobs:
         files: |
           publish/DMINLauncher-win-x64.zip
           publish/DMINLauncher-linux-x64.zip
+          launcher.cfg.batocera-template
         draft: false
         prerelease: false
-        asset_name: DMINLauncher-linux-x64.zip
-        asset_content_type: application/zip
-    
-    - name: Upload Batocera Template
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./launcher.cfg.batocera-template
-        asset_name: launcher.cfg.batocera-template
-        asset_content_type: text/plain
