@@ -959,8 +959,8 @@ public class MainWindowViewModel : ReactiveObject
                 engineCmd = enginePath;
                 engineArgs = args.ToArray();
                 
-                // Verify executable exists
-                if (!File.Exists(engineCmd) && !Path.IsPathRooted(engineCmd))
+                // Only verify executable exists if it's a full path (not a system command)
+                if (Path.IsPathRooted(engineCmd) && !File.Exists(engineCmd))
                 {
                     StatusMessage = $"❌ Engine not found: {engineCmd}";
                     StatusMessageColor = "Red";
