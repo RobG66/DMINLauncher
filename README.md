@@ -21,8 +21,6 @@ DMINLauncher is a simple launcher for DOOM engines built with .NET 9 and Avaloni
 
 - Launch DOOM source ports (UZDoom, GZDoom, Zandronum, etc.)
 - Load IWAD files (DOOM, DOOM II, Heretic, Hexen, etc.)
-- Load and organize mod files (WAD, PK3, PK7, ZIP)
-- Drag-and-drop mod load order
 - Map count detection for WAD/PK3 files
 - Set difficulty, starting map, and game options
 - DMFLAGS editor (DMFLAGS, DMFLAGS2, DMFLAGS3)
