@@ -12,7 +12,13 @@
    chmod +x /userdata/roms/ports/DMINLauncher/DMINLauncher-linux-x64
    ```
 
-3. **Copy the configuration template:**
+3. **Configuration:**
+   
+   **NEW in v1.0.1+**: The launcher now automatically creates a `launcher.cfg` file with default Batocera paths on first run! 
+   
+   You no longer need to manually copy the template file. Just run the launcher and it will create the configuration automatically.
+   
+   *(Optional)* If you want to pre-configure settings, you can still copy the template:
    ```bash
    cp launcher.cfg.batocera-template launcher.cfg
    ```

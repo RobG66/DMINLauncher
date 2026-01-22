@@ -75,7 +75,7 @@ Compress-Archive -Path "publish/linux-x64/DMINLauncher-linux-x64" `
 # Summary
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Green
-Write-Host "✓ Build Complete!" -ForegroundColor Green
+Write-Host "Build Complete!" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
 Write-Host ""
 Write-Host "Release files created in: publish/" -ForegroundColor Cyan
