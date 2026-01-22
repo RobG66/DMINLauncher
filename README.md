@@ -1,8 +1,17 @@
 # DMINLauncher v1.0.0
 
+<!-- Replace this placeholder with your image URL -->
+![DMINLauncher Screenshot](placeholder-for-screenshot.png)
+
 **A modern, cross-platform launcher for classic DOOM source ports**
 
-DMINLauncher is a feature-rich, user-friendly launcher for DOOM source ports like GZDoom, Zandronum, and more. Built with .NET 9 and Avalonia UI, it provides a beautiful interface for managing your DOOM games, mods, and multiplayer sessions.
+DMINLauncher is a feature-rich, user-friendly launcher for DOOM source ports like UZDoom, Zandronum, and more. Built with .NET 9 and Avalonia UI, it provides a beautiful interface for managing your DOOM games, mods, and multiplayer sessions.
+
+## Support the Project
+
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20Me-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/YOUR_USERNAME)
+[![PayPal](https://img.shields.io/badge/PayPal-Donate-00457C?logo=paypal&logoColor=white)](https://paypal.me/YOUR_USERNAME)
+[![Patreon](https://img.shields.io/badge/Patreon-Support-F96854?logo=patreon&logoColor=white)](https://patreon.com/YOUR_USERNAME)
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-lightgrey.svg)
@@ -13,7 +22,7 @@ DMINLauncher is a feature-rich, user-friendly launcher for DOOM source ports lik
 ## ✨ Features
 
 ### Core Features
-- 🎮 **Multi-Engine Support** - Automatically detects GZDoom, Zandronum, Doom Retro, and other source ports
+- 🎮 **Multi-Engine Support** - Automatically detects UZDoom, Zandronum, Doom Retro, and other source ports
 - 📁 **Smart File Management** - Organizes IWADs, mods (PWADs/PK3), and total conversions
 - 🗺️ **Map Detection** - Shows map count and names for WAD/PK3 files
 - 🔄 **Mod Load Order** - Drag and arrange mods in custom loading order
@@ -49,8 +58,8 @@ DMINLauncher is a feature-rich, user-friendly launcher for DOOM source ports lik
 2. **Place** the executable in a dedicated folder (e.g., `C:\Games\DMINLauncher\`)
 3. **Run** `DMINLauncher-win-x64.exe`
 4. **Configure** directories:
-   - Click "Change Data Directory" and select your DOOM WADs folder
-   - Click "Change Engine Directory" and select folder containing your source port executables
+- Click "Change Data Directory" and select your DOOM WADs folder
+- Click "Change Engine Directory" and select folder containing your source port executables (uzdoom.exe, zandronum.exe, etc.)
 
 ### Linux
 
@@ -97,36 +106,11 @@ chmod +x /userdata/roms/ports/DMINLauncher.sh
 ### First Launch
 
 1. **Set Data Directory** - Point to your folder containing DOOM WAD files (DOOM.WAD, DOOM2.WAD, etc.)
-2. **Set Engine Directory** - Point to folder containing source port executables (gzdoom.exe, zandronum.exe, etc.)
+2. **Set Engine Directory** - Point to folder containing source port executables (uzdoom.exe, zandronum.exe, etc.)
 3. **Select Base Game** - Choose your IWAD (DOOM, DOOM II, Heretic, Hexen, etc.)
 4. **Select Engine** - Choose which source port to use
 5. **Add Mods** (Optional) - Select mod files from the right panel and click "Add to Load Order"
 6. **Click Launch Game!**
-
-### Organizing Your Files
-
-**Recommended Folder Structure:**
-```
-C:\Games\Doom\
-├── IWADs\
-│   ├── doom.wad
-│   ├── doom2.wad
-│   ├── plutonia.wad
-│   ├── tnt.wad
-│   ├── heretic.wad
-│   └── hexen.wad
-├── Mods\
-│   ├── maps\
-│   │   ├── 1000LinesCommunityProject.wad
-│   │   └── Eviternity.pk3
-│   ├── weapons\
-│   │   └── brutal_doom_v21.pk3
-│   └── gameplay\
-│       └── project_brutality.pk3
-├── Engines\
-│   ├── gzdoom.exe
-│   └── zandronum.exe
-```
 
 ---
 
@@ -167,7 +151,7 @@ turbospeed=100       # Turbo speed percentage
 
 # Selected files
 basegame=doom2.wad
-selectedengine=gzdoom.exe
+selectedengine=uzdoom.exe
 
 # Mod load order (one per line)
 mods=
@@ -233,7 +217,7 @@ DMINLauncher auto-detects the following source ports:
 
 | Engine | Platform | Features |
 |--------|----------|----------|
-| **GZDoom** | Windows, Linux | Modern features, mods, multiplayer |
+| **UZDoom** | Windows, Linux | Modern features, mods, multiplayer (successor to GZDoom) |
 | **Zandronum** | Windows, Linux | Best multiplayer, CTF, skulltag |
 | **Chocolate Doom** | Windows, Linux | Vanilla authentic experience |
 | **Crispy Doom** | Windows, Linux | Enhanced vanilla |
@@ -317,7 +301,7 @@ DMINLauncher provides a full UI editor for DMFLAGS. Here are some common setting
 
 1. Click **"Change Data Directory"**
 2. Navigate to folder containing your `.wad` files
-3. Click **"Refresh"** button (small button next to Engine dropdown)
+3. Click **"Refresh"** button
 4. Check that files are valid WAD/PK3 format
 
 ### No Engines Detected
@@ -325,7 +309,7 @@ DMINLauncher provides a full UI editor for DMFLAGS. Here are some common setting
 1. Click **"Change Engine Directory"**
 2. Navigate to folder containing source port executables
 3. Click **"Refresh"** button
-4. Ensure executables have correct names (gzdoom.exe, zandronum.exe, etc.)
+4. Ensure executables have correct names (uzdoom.exe, zandronum.exe, etc.)
 
 ### Multiplayer Connection Issues
 
@@ -395,7 +379,7 @@ engine=/path/to/engines
 
 ### Source Ports
 
-- [GZDoom](https://zdoom.org/) - Most popular modern port
+- [UZDoom](https://zdoom.org/) - Most popular modern port (successor to GZDoom)
 - [Zandronum](https://zandronum.com/) - Best for multiplayer
 - [Chocolate Doom](https://www.chocolate-doom.org/) - Vanilla accuracy
 
@@ -467,7 +451,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ### Special Thanks
 - id Software - For creating DOOM
-- GZDoom Team - For the amazing source port
+- UZDoom Team - For the amazing source port
 - DOOM Community - For decades of incredible mods
 - Batocera Team - For the retro gaming platform
 
