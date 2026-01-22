@@ -17,39 +17,23 @@
    cp launcher.cfg.batocera-template launcher.cfg
    ```
 
-## Batocera Default Locations
+## Default Paths
 
 ### WAD Files
-Place your DOOM WAD files in:
+Place your WAD files in:
 ```
 /userdata/roms/gzdoom/
 ```
 
-Supported files:
-- `doom.wad` - DOOM
-- `doom2.wad` - DOOM II
-- `plutonia.wad` - The Plutonia Experiment
-- `tnt.wad` - TNT: Evilution
-- `heretic.wad` - Heretic
-- `hexen.wad` - Hexen
-- `strife1.wad` - Strife
-
 ### Mods
-Place mod files (.wad, .pk3) in:
+Place mod files in:
 ```
 /userdata/roms/gzdoom/mods/
 ```
 
-Or organize in subfolders:
-```
-/userdata/roms/gzdoom/mods/maps/
-/userdata/roms/gzdoom/mods/weapons/
-/userdata/roms/gzdoom/mods/gameplay/
-```
-
 ## Engine Detection
 
-**Batocera includes GZDoom at `/usr/bin/gzdoom`**
+Batocera includes GZDoom at `/usr/bin/gzdoom`
 
 The launcher will automatically detect it as **"gzdoom (system)"** - you don't need to set the engine directory to `/usr/bin`.
 
@@ -95,37 +79,13 @@ chmod +x /userdata/roms/ports/DMINLauncher.sh
 - Don't set engine directory to `/usr/bin` - it will scan hundreds of files
 - Use a dedicated folder or leave it pointing to a non-existent path
 
-### File dialogs don't work
-This is a known issue with Batocera's minimal desktop environment. Use the configuration file method instead:
-
-1. Edit `launcher.cfg` manually
-2. Set paths:
-   ```
-   wads=/userdata/roms/doom
-   engine=/usr/bin
-   ```
-
 ## Configuration File
 
-The `launcher.cfg` file stores all settings. You can edit it manually if needed.
+The `launcher.cfg` file stores all settings. You can edit it manually:
 
-Example for DOOM II with Brutal Doom:
-```
-wads=/userdata/roms/doom
-engine=/usr/bin
+```ini
+wads=/userdata/roms/gzdoom
+engine=/userdata/roms/ports/engines
 basegame=doom2.wad
-difficulty=2
 selectedengine=gzdoom (system)
 ```
-
-Then add mods through the UI or launch directly from command line.
-
-## Command Line Launch
-
-You can also launch directly with GZDoom:
-```bash
-gzdoom -iwad /userdata/roms/doom/doom2.wad \
-       -file /userdata/roms/doom/mods/brutalv21.pk3
-```
-
-But the launcher provides a nice GUI for managing configurations! 🎮
