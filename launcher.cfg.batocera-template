@@ -4,7 +4,7 @@
 
 # Directory paths
 # Batocera default DOOM WADs location
-wads=/userdata/roms/doom
+wads=/userdata/roms/gzdoom
 
 # Engine executable (default Batocera GZDoom)
 engine=/usr/bin
