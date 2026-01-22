@@ -1,0 +1,38 @@
+﻿<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:DMINLauncher.ViewModels"
+        x:Class="DMINLauncher.Views.LaunchSummaryWindow"
+        x:DataType="vm:LaunchSummaryViewModel"
+        Title="Launch Summary"
+        Width="700" Height="450"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True">
+
+    <Panel>
+        <!-- Subtle Background Image -->
+        <Image Source="/Assets/wallpaper2.jpg" 
+               Stretch="UniformToFill" 
+               Opacity="0.45"/>
+        
+        <!-- Semi-transparent overlay for better readability -->
+        <Border Background="#A0202020"/>
+
+        <!-- Main Content -->
+        <DockPanel Margin="5">
+            <!-- Close Button at Bottom -->
+            <Button DockPanel.Dock="Bottom"
+                    Content="Close"
+                    HorizontalAlignment="Center"
+                    Margin="5"
+                    Command="{Binding CloseCommand}"/>
+
+            <!-- Scrollable Summary Text -->
+            <ScrollViewer Margin="15,10,15,10">
+                <TextBlock Text="{Binding SummaryText}"
+                           FontFamily="Consolas"
+                           FontSize="11"
+                           TextWrapping="NoWrap"/>
+            </ScrollViewer>
+        </DockPanel>
+    </Panel>
+</Window>

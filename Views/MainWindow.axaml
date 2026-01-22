@@ -1,0 +1,600 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:DMINLauncher.ViewModels"
+        xmlns:conv="using:DMINLauncher.Converters"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="700"
+        x:Class="DMINLauncher.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="{Binding AppVersion, StringFormat='DMINLauncher v{0}'}"
+        Width="{Binding WindowWidth}" Height="{Binding WindowHeight}"
+        MinWidth="400" MinHeight="350"
+        MaxWidth="1600" MaxHeight="1400">
+
+    <Window.Resources>
+        <conv:DifficultyDisplayConverter x:Key="DifficultyDisplay"/>
+        <conv:GameTypeDisplayConverter x:Key="GameTypeDisplay"/>
+        <conv:NetworkModeDisplayConverter x:Key="NetworkModeDisplay"/>
+        <conv:HexenClassDisplayConverter x:Key="HexenClassDisplay"/>
+    </Window.Resources>
+
+    <Window.KeyBindings>
+        <KeyBinding Gesture="Ctrl+Add" Command="{Binding ZoomInCommand}"/>
+        <KeyBinding Gesture="Ctrl+Subtract" Command="{Binding ZoomOutCommand}"/>
+        <KeyBinding Gesture="Ctrl+D0" Command="{Binding ResetZoomCommand}"/>
+        <KeyBinding Gesture="Ctrl+NumPad0" Command="{Binding ResetZoomCommand}"/>
+    </Window.KeyBindings>
+
+    <Window.Styles>
+        <Style Selector="TabItem">
+            <Setter Property="FontSize" Value="18"/>
+            <Setter Property="Padding" Value="10,5"/>
+        </Style>
+    </Window.Styles>
+
+    <Design.DataContext>
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+
+    <!-- Viewbox scales content to fill the window -->
+    <Viewbox Stretch="Uniform">
+        <Panel Width="800" Height="700">
+            <!-- Subtle Background Image -->
+            <Image Source="/Assets/wallpaper.jpg" 
+                   Stretch="UniformToFill" 
+                   Opacity="0.45"/>
+            
+            <!-- Semi-transparent overlay for better readability -->
+            <Border Background="#A0202020"/>
+
+            <!-- Main Content Grid -->
+            <Grid Margin="10" RowDefinitions="Auto,*,Auto">
+      
+            <!-- Main Content -->
+            <TabControl Grid.Row="1">
+                <!-- Basic Settings Tab -->
+                <TabItem Header="Basic Settings">
+                    <ScrollViewer>
+                        <StackPanel Margin="10" Spacing="15">
+                            <!-- Directory Selection - Side by Side -->
+                            <Grid ColumnDefinitions="*,10,*">
+                                <!-- WADs Directory -->
+                                <Border Grid.Column="0" BorderBrush="Gray" BorderThickness="1" Padding="8" CornerRadius="5"
+                                        Background="#40404040">
+                                    <StackPanel Spacing="3">
+                                        <TextBlock Text="📁 WADs &amp; Mods" FontWeight="Bold"/>
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <TextBox Grid.Column="0" Text="{Binding DataDirectory}" 
+                                                     Watermark="Click Browse to set WADs directory..."
+                                                     ToolTip.Tip="{Binding DataDirectory}"
+                                                     IsReadOnly="True" 
+                                                     VerticalContentAlignment="Center"/>
+                                            <Button Grid.Column="1" Content="📁 Browse" 
+                                                    Command="{Binding ChangeDataDirectoryCommand}"
+                                                    Margin="5,0,0,0" Padding="8,4"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+                                
+                                <!-- Engine Directory -->
+                                <Border Grid.Column="2" BorderBrush="Gray" BorderThickness="1" Padding="8" CornerRadius="5"
+                                        Background="#40404040">
+                                    <StackPanel Spacing="3">
+                                        <TextBlock Text="📁 Engine Executable" FontWeight="Bold"/>
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <TextBox Grid.Column="0" Text="{Binding EngineDirectory}" 
+                                                     Watermark="Click Browse to set engine directory..."
+                                                     ToolTip.Tip="{Binding EngineDirectory}"
+                                                     IsReadOnly="True"
+                                                     VerticalContentAlignment="Center"/>
+                                            <Button Grid.Column="1" Content="📁 Browse" 
+                                                    Command="{Binding ChangeEngineDirectoryCommand}"
+                                                    Margin="5,0,0,0" Padding="8,4"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+
+                            <!-- Base Game and Engine Selection - Side by Side -->
+                            <Grid ColumnDefinitions="*,10,*">
+                                <!-- Base Game Selection -->
+                                <Border Grid.Column="0" BorderBrush="Gray" BorderThickness="1" Padding="8" CornerRadius="5">
+                                    <StackPanel Spacing="3">
+                                        <TextBlock Text="Base Game (IWAD)" FontWeight="Bold"/>
+                                        <ComboBox ItemsSource="{Binding WadFiles}" 
+                                                  SelectedItem="{Binding SelectedBaseGame}"
+                                                  HorizontalAlignment="Stretch">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <StackPanel ToolTip.Tip="{Binding MapList}">
+                                                        <TextBlock Text="{Binding RelativePath}" FontWeight="Medium"/>
+                                                        <TextBlock Text="{Binding Stats}" FontSize="10" Foreground="Gray"/>
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                        
+                                        <!-- Selected WAD Info -->
+                                        <Border IsVisible="{Binding SelectedBaseGame, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                                Margin="0,4,0,0" Background="#30000000" Padding="6" CornerRadius="3">
+                                            <StackPanel Spacing="2">
+                                                <TextBlock Text="{Binding SelectedBaseGame.Stats}" FontSize="11" Foreground="LightGreen" FontWeight="SemiBold"/>
+                                                <TextBlock Text="{Binding SelectedBaseGame.MapList}" FontSize="10" Foreground="LightGray"
+                                                           TextWrapping="Wrap" MaxHeight="40" TextTrimming="CharacterEllipsis"/>
+                                            </StackPanel>
+                                        </Border>
+                                        
+                                        <!-- Hexen Class Selection -->
+                                        <StackPanel Spacing="3" IsVisible="{Binding ShowHexenClassSelection}" Margin="0,6,0,0">
+                                            <TextBlock Text="Hexen Character Class" FontWeight="Bold"/>
+                                            <ComboBox ItemsSource="{Binding HexenClassOptions}"
+                                                      SelectedItem="{Binding HexenClass}"
+                                                      HorizontalAlignment="Stretch">
+                                                <ComboBox.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding Converter={StaticResource HexenClassDisplay}}"/>
+                                                    </DataTemplate>
+                                                </ComboBox.ItemTemplate>
+                                            </ComboBox>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Engine Selection -->
+                                <Border Grid.Column="2" BorderBrush="Gray" BorderThickness="1" Padding="8" CornerRadius="5">
+                                    <StackPanel Spacing="5">
+                                        <DockPanel>
+                                            <TextBlock Text="Engine" FontWeight="Bold" DockPanel.Dock="Left"/>
+                                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="5">
+                                                <Button Content="Refresh" Command="{Binding DetectEnginesCommand}" 
+                                                        ToolTip.Tip="Re-scan for engines in current directory"
+                                                        FontSize="10" Padding="5,2"/>
+                                                <Button Content="+ Flatpak" Command="{Binding AddCustomFlatpakCommand}" 
+                                                        ToolTip.Tip="Add any Flatpak application as an engine"
+                                                        IsVisible="{Binding IsLinux}"
+                                                        FontSize="10" Padding="5,2"/>
+                                            </StackPanel>
+                                        </DockPanel>
+                                        <ComboBox ItemsSource="{Binding EngineOptions}"
+                                                  SelectedItem="{Binding SelectedEngine}"
+                                                  HorizontalAlignment="Stretch"/>
+                                        
+                                        <!-- Difficulty and Starting Map - Side by Side -->
+                                        <Grid ColumnDefinitions="*,10,*" Margin="0,8,0,0">
+                                            <StackPanel Grid.Column="0" Spacing="3">
+                                                <TextBlock Text="Difficulty" FontWeight="Bold"/>
+                                                <ComboBox ItemsSource="{Binding DifficultyOptions}"
+                                                          SelectedItem="{Binding SelectedDifficulty}"
+                                                          HorizontalAlignment="Stretch">
+                                                    <ComboBox.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <TextBlock Text="{Binding Converter={StaticResource DifficultyDisplay}}"/>
+                                                        </DataTemplate>
+                                                    </ComboBox.ItemTemplate>
+                                                </ComboBox>
+                                            </StackPanel>
+                                            
+                                            <StackPanel Grid.Column="2" Spacing="3">
+                                                <TextBlock Text="Starting Map" FontWeight="Bold"/>
+                                                <NumericUpDown Value="{Binding StartingMap}" 
+                                                             Minimum="1" Maximum="99"
+                                                             FormatString="0" Increment="1"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+
+                            <!-- Mods Selection - Dual ListBox -->
+                            <Border BorderBrush="Gray" BorderThickness="1" Padding="10" CornerRadius="5">
+                                <StackPanel Spacing="5">
+                                    <DockPanel>
+                                        <TextBlock Text="Mods (WADs/PK3s) - Load Order" FontWeight="Bold" DockPanel.Dock="Left"/>
+                                        <Button Content="Refresh" Command="{Binding RefreshFilesCommand}" 
+                                                DockPanel.Dock="Right" FontSize="10" Padding="5,2"
+                                                Margin="5,0,0,0"/>
+                                    </DockPanel>
+                                    
+                                    <Grid ColumnDefinitions="*,Auto,*" Height="250">
+                                        <!-- Available Mods (Left) -->
+                                        <Border Grid.Column="0" BorderBrush="Gray" BorderThickness="1" CornerRadius="3">
+                                            <DockPanel>
+                                                <TextBlock Text="Available Mods" FontWeight="SemiBold" FontSize="11"
+                                                           DockPanel.Dock="Top" Margin="5,3"/>
+                                                <ListBox ItemsSource="{Binding ModFiles}" 
+                                                         SelectedItem="{Binding SelectedAvailableMod}"
+                                                         Background="#40000000" FontSize="11">
+                                                    <ListBox.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <StackPanel ToolTip.Tip="{Binding MapList}">
+                                                                <TextBlock Text="{Binding RelativePath}"/>
+                                                                <TextBlock Text="{Binding Stats}" FontSize="9" Foreground="Gray"/>
+                                                            </StackPanel>
+                                                        </DataTemplate>
+                                                    </ListBox.ItemTemplate>
+                                                </ListBox>
+                                            </DockPanel>
+                                        </Border>
+                                        
+                                        <!-- Add/Remove Buttons (Center) -->
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="8,0" Spacing="5">
+                                            <Button Content="Add ▶" Command="{Binding AddModToLoadOrderCommand}"
+                                                    Width="90" HorizontalContentAlignment="Center"/>
+                                            <Button Content="◀ Remove" Command="{Binding RemoveModFromLoadOrderCommand}"
+                                                    Width="90" HorizontalContentAlignment="Center"/>
+                                        </StackPanel>
+                                        
+                                        <!-- Selected Mods / Load Order (Right) -->
+                                        <Border Grid.Column="2" BorderBrush="Gray" BorderThickness="1" CornerRadius="3">
+                                            <DockPanel>
+                                                <TextBlock Text="Load Order (top = first)" FontWeight="SemiBold" FontSize="11"
+                                                           DockPanel.Dock="Top" Margin="5,3"/>
+                                                <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" 
+                                                            HorizontalAlignment="Center" Margin="0,5" Spacing="5">
+                                                    <Button Content="▲ Up" Command="{Binding MoveModUpCommand}" Width="90"/>
+                                                    <Button Content="▼ Down" Command="{Binding MoveModDownCommand}" Width="90"/>
+                                                </StackPanel>
+                                                <ListBox ItemsSource="{Binding SelectedModFiles}" 
+                                                         SelectedItem="{Binding SelectedLoadOrderMod}"
+                                                         Background="#40000000" FontSize="11">
+                                                    <ListBox.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                                                <TextBlock Text="{Binding LoadOrder}" FontWeight="Bold" 
+                                                                           Foreground="LightGreen" Width="20"/>
+                                                                <StackPanel ToolTip.Tip="{Binding MapList}">
+                                                                    <TextBlock Text="{Binding RelativePath}"/>
+                                                                    <TextBlock Text="{Binding Stats}" FontSize="9" Foreground="Gray"/>
+                                                                </StackPanel>
+                                                            </StackPanel>
+                                                        </DataTemplate>
+                                                    </ListBox.ItemTemplate>
+                                                </ListBox>
+                                            </DockPanel>
+                                        </Border>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!-- Total Conversions Tab -->
+                <TabItem Header="Total Conversions">
+                    <Border BorderBrush="Gray" BorderThickness="1" Padding="10" Margin="10" CornerRadius="5">
+                        <StackPanel Spacing="5">
+                            <DockPanel>
+                                <TextBlock Text="Total Conversions (Complete Game Replacements)" FontWeight="Bold" DockPanel.Dock="Left"/>
+                                <Button Content="Refresh" Command="{Binding RefreshFilesCommand}" 
+                                        DockPanel.Dock="Right" FontSize="10" Padding="5,2"
+                                        Margin="5,0,0,0"/>
+                            </DockPanel>
+                            <TextBlock Text="Scans folders: total-conversions/, tc/, conversions/" 
+                                      FontSize="11" Foreground="Gray"/>
+                            <ListBox ItemsSource="{Binding TotalConversionFiles}" MaxHeight="450">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <CheckBox IsChecked="{Binding IsSelected}">
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding RelativePath}" FontWeight="Medium"/>
+                                                <TextBlock Text="{Binding LastModified, StringFormat='Modified: {0:yyyy-MM-dd HH:mm}'}" 
+                                                         FontSize="11" Foreground="Gray"/>
+                                            </StackPanel>
+                                        </CheckBox>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </StackPanel>
+                    </Border>
+                </TabItem>
+
+                <!-- Run Switches Tab -->
+                <TabItem Header="Run Switches">
+                    <ScrollViewer>
+                        <StackPanel Margin="10" Spacing="10">
+                            <CheckBox Content="AVG - Auto level advance (20 minutes)" 
+                                    IsChecked="{Binding AvgSwitch}"/>
+                            <CheckBox Content="Fast - Monsters run fast like Nightmare mode" 
+                                    IsChecked="{Binding FastSwitch}"/>
+                            <CheckBox Content="No Monsters" 
+                                    IsChecked="{Binding NoMonstersSwitch}"/>
+                            <CheckBox Content="Respawn - Monsters respawn" 
+                                    IsChecked="{Binding RespawnSwitch}"/>
+                            
+                            <Border BorderBrush="Gray" BorderThickness="1" Padding="10" CornerRadius="5">
+                                <StackPanel Spacing="5">
+                                    <CheckBox Content="Timer - Auto level advance after X minutes" 
+                                            IsChecked="{Binding TimerSwitch}"/>
+                                    <StackPanel Orientation="Horizontal" Spacing="5" 
+                                              IsEnabled="{Binding TimerSwitch}">
+                                        <TextBlock Text="Minutes:" VerticalAlignment="Center"/>
+                                        <NumericUpDown Value="{Binding TimerMinutes}" 
+                                                     Minimum="1" Maximum="999" Width="150"
+                                                     FormatString="0"
+                                                     Increment="1"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <Border BorderBrush="Gray" BorderThickness="1" Padding="10" CornerRadius="5">
+                                <StackPanel Spacing="5">
+                                    <CheckBox Content="Turbo - Player movement speed %" 
+                                            IsChecked="{Binding TurboSwitch}"/>
+                                    <StackPanel Orientation="Horizontal" Spacing="5" 
+                                              IsEnabled="{Binding TurboSwitch}">
+                                        <TextBlock Text="Speed % (10-255):" VerticalAlignment="Center"/>
+                                        <NumericUpDown Value="{Binding TurboSpeed}" 
+                                                     Minimum="10" Maximum="255" Width="150"
+                                                     FormatString="0"
+                                                     Increment="1"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!-- Multiplayer Tab -->
+                <TabItem Header="Multiplayer">
+                    <ScrollViewer>
+                        <StackPanel Margin="10" Spacing="15">
+                            <!-- Game Type, Network Mode, and Number of Players -->
+                            <Border BorderBrush="Gray" BorderThickness="1" Padding="10" CornerRadius="5">
+                                <Grid ColumnDefinitions="*,10,*,10,Auto">
+                                    <!-- Game Type (Left) -->
+                                    <StackPanel Grid.Column="0" Spacing="5">
+                                        <TextBlock Text="Game Type" FontWeight="Bold"/>
+                                        <ComboBox ItemsSource="{Binding GameTypeOptions}"
+                                                  SelectedItem="{Binding GameType}">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding Converter={StaticResource GameTypeDisplay}}"/>
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                    </StackPanel>
+                                    
+                                    <!-- Network Mode (Center) -->
+                                    <StackPanel Grid.Column="2" Spacing="5">
+                                        <TextBlock Text="Network Mode" FontWeight="Bold"/>
+                                        <ComboBox ItemsSource="{Binding NetworkModeOptions}"
+                                                  SelectedItem="{Binding NetworkMode}">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding Converter={StaticResource NetworkModeDisplay}}"/>
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                    </StackPanel>
+                                    
+                                    <!-- Number of Players (Right) -->
+                                    <StackPanel Grid.Column="4" Spacing="5"
+                                                IsVisible="{Binding ShowPlayerCount}">
+                                        <TextBlock Text="Players" FontWeight="Bold"/>
+                                        <NumericUpDown Value="{Binding PlayerCount}" 
+                                                     Minimum="1" Maximum="8"
+                                                     FormatString="0" Increment="1"
+                                                     Width="100"
+                                                     Foreground="White"
+                                                     Background="#40404040"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <!-- IP Address Display - Shows when hosting -->
+                            <Border BorderBrush="Gray" BorderThickness="1" Padding="10" CornerRadius="5"
+                                    IsVisible="{Binding LocalIpAddress, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                <StackPanel Spacing="8">
+                                    <TextBlock Text="Network Information" FontWeight="Bold"/>
+                                    
+                                    <!-- IP Addresses Side by Side -->
+                                    <Grid ColumnDefinitions="*,10,*">
+                                        <!-- LAN IP - Left side -->
+                                        <StackPanel Grid.Column="0" Spacing="3" 
+                                                    IsVisible="{Binding LocalIpAddress, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                            <TextBlock Text="🏠 Local (LAN) IP Address:" FontSize="11" Foreground="Gray"/>
+                                            <Border Background="#30000000" Padding="8,4" CornerRadius="3">
+                                                <TextBlock Text="{Binding LocalIpAddress}" 
+                                                          FontFamily="Consolas" FontSize="13" FontWeight="SemiBold"
+                                                          Foreground="LightGreen"/>
+                                            </Border>
+                                            <TextBlock Text="Players on your local network use this address" 
+                                                      FontSize="10" Foreground="Gray" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                        
+                                        <!-- Public IP - Right side -->
+                                        <StackPanel Grid.Column="2" Spacing="3" 
+                                                    IsVisible="{Binding PublicIpAddress, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                            <TextBlock Text="🌐 Public (Internet) IP Address:" FontSize="11" Foreground="Gray"/>
+                                            <Border Background="#30000000" Padding="8,4" CornerRadius="3">
+                                                <TextBlock Text="{Binding PublicIpAddress}" 
+                                                          FontFamily="Consolas" FontSize="13" FontWeight="SemiBold"
+                                                          Foreground="Orange"/>
+                                            </Border>
+                                            <TextBlock Text="Remote players use this address (requires port forwarding)" 
+                                                      FontSize="10" Foreground="Gray" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </Grid>
+                                    
+                                    <!-- No IP detected message -->
+                                    <TextBlock Text="⚠️ No IP addresses detected. Check your network connection." 
+                                              FontSize="11" Foreground="Orange" TextWrapping="Wrap"
+                                              IsVisible="{Binding LocalIpAddress, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border BorderBrush="Gray" BorderThickness="1" Padding="10" CornerRadius="5"
+                                    IsVisible="{Binding ShowPortForwardingTest}">
+                                <StackPanel Spacing="5">
+                                    <TextBlock Text="Port Forwarding Test" FontWeight="Bold"/>
+                                    <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="Gray">
+                                        <Run Text="This test will:"/>
+                                        <LineBreak/>
+                                        <Run Text="1. Open port 5029 temporarily on this computer"/>
+                                        <LineBreak/>
+                                        <Run Text="2. Check if UPnP is supported for automatic configuration"/>
+                                        <LineBreak/>
+                                        <Run Text="3. Tell you how to fix port forwarding if needed"/>
+                                    </TextBlock>
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <Button Content="🔍 Test Port" 
+                                                Command="{Binding TestPortForwardingCommand}"
+                                                IsEnabled="{Binding !IsTestingPort}"/>
+                                        <Button Content="⚡ Auto-Configure Port" 
+                                                Command="{Binding AutoConfigurePortCommand}"
+                                                IsEnabled="{Binding !IsTestingPort}"
+                                                ToolTip.Tip="Automatically open UDP port 5029 using UPnP"/>
+                                    </StackPanel>
+                                    
+                                    <!-- Testing Progress Indicator -->
+                                    <Border IsVisible="{Binding IsTestingPort}" 
+                                            Background="#30404040" 
+                                            Padding="10" 
+                                            CornerRadius="5"
+                                            Margin="0,5,0,0">
+                                        <StackPanel Spacing="8">
+                                            <ProgressBar IsIndeterminate="True" Height="4"/>
+                                            <TextBlock Text="Testing in progress... Please wait (15-20 seconds)" 
+                                                      FontSize="11" 
+                                                      FontWeight="SemiBold"
+                                                      Foreground="Orange"
+                                                      HorizontalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Border>
+                                    
+                                    <TextBlock Text="{Binding PortTestResult}" 
+                                              TextWrapping="Wrap"
+                                              Margin="0,5,0,0"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!-- DMFLAGS Tab -->
+                <TabItem Header="DMFLAGS">
+                    <TabControl>
+                    <TabItem Header="DMFLAGS">
+                        <ScrollViewer>
+                            <Border BorderBrush="Gray" BorderThickness="1" Padding="10" CornerRadius="5" Margin="10">
+                                <ItemsControl ItemsSource="{Binding DmFlags1List}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <UniformGrid Columns="2"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <CheckBox Content="{Binding Label}" 
+                                                    IsChecked="{Binding IsChecked}" 
+                                                    Margin="0,2"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Border>
+                        </ScrollViewer>
+                    </TabItem>
+                    <TabItem Header="DMFLAGS2">
+                        <ScrollViewer>
+                            <Border BorderBrush="Gray" BorderThickness="1" Padding="10" CornerRadius="5" Margin="10">
+                                <ItemsControl ItemsSource="{Binding DmFlags2List}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <UniformGrid Columns="2"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <CheckBox Content="{Binding Label}" 
+                                                    IsChecked="{Binding IsChecked}" 
+                                                    Margin="0,2"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Border>
+                        </ScrollViewer>
+                    </TabItem>
+                    <TabItem Header="DMFLAGS3">
+                        <ScrollViewer>
+                            <Border BorderBrush="Gray" BorderThickness="1" Padding="10" CornerRadius="5" Margin="10">
+                                <ItemsControl ItemsSource="{Binding DmFlags3List}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <UniformGrid Columns="2"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <CheckBox Content="{Binding Label}" 
+                                                    IsChecked="{Binding IsChecked}" 
+                                                    Margin="0,2"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Border>
+                        </ScrollViewer>
+                    </TabItem>
+                    </TabControl>
+                </TabItem>
+            </TabControl>
+
+            <!-- Bottom Status and Controls -->
+            <Grid Grid.Row="2" RowDefinitions="Auto,Auto" Margin="0,10,0,0">
+                <!-- Row 0: Status Message (full width) -->
+                <Border Grid.Row="0" Padding="0,0,0,8">
+                    <TextBlock Text="{Binding StatusMessage}" 
+                              FontWeight="Bold"
+                              Foreground="{Binding StatusMessageColor}"
+                              TextWrapping="Wrap"/>
+                </Border>
+                
+                <!-- Row 1: Zoom Controls (left) and Action Buttons (right) -->
+                <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto">
+                    <!-- Zoom Controls -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="5">
+                        <Button Command="{Binding ZoomOutCommand}" 
+                                ToolTip.Tip="Zoom Out (Ctrl -)"
+                                Width="32" Height="32" Padding="2">
+                            <Image Source="/Assets/zoom-out.png" />
+                        </Button>
+                        <Button Command="{Binding ZoomInCommand}" 
+                                ToolTip.Tip="Zoom In (Ctrl +)"
+                                Width="32" Height="32" Padding="2">
+                            <Image Source="/Assets/zoom-in.png" />
+                        </Button>
+                        <Button Command="{Binding ResetZoomCommand}" 
+                                ToolTip.Tip="Reset Zoom (Ctrl 0)"
+                                Width="32" Height="32" Padding="2">
+                            <Image Source="/Assets/zoom-reset.png" />
+                        </Button>
+                        <TextBlock Text="{Binding ZoomLevel, StringFormat='{}{0:P0}'}" 
+                                   VerticalAlignment="Center" Margin="5,0,0,0"
+                                   FontWeight="SemiBold" MinWidth="40"/>
+                    </StackPanel>
+                    
+                    <!-- Spacer -->
+                    <Border Grid.Column="1"/>
+                    
+                    <!-- Action Buttons -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10">
+                        <Button Content="Reset All" Command="{Binding ResetSettingsCommand}" 
+                               ToolTip.Tip="Reset all settings to default values"/>
+                        <Button Content="Save Default" Command="{Binding SaveCurrentSettingsCommand}" 
+                               ToolTip.Tip="Save current settings as defaults for next launch"/>
+                        <Button Content="Load Preset" Command="{Binding LoadSettingsCommand}"
+                               ToolTip.Tip="Load a saved .gzdoom preset file"/>
+                        <Button Content="Save Preset" Command="{Binding SaveSettingsCommand}"
+                               ToolTip.Tip="Save current settings to a .gzdoom preset file"/>
+                        <Button Content="Summary" Command="{Binding ShowLaunchSummaryCommand}" 
+                               ToolTip.Tip="Preview all settings and command line"
+                               FontWeight="SemiBold" Background="#404060"/>
+                        <Button Content="Launch" Command="{Binding LaunchGameCommand}" 
+                               FontWeight="Bold" FontSize="14" Background="#406020"/>
+                    </StackPanel>
+                </Grid>
+            </Grid>
+        </Grid>
+        </Panel>
+    </Viewbox>
+</Window>

@@ -1,0 +1,36 @@
+# DMIN Launcher Configuration for Batocera
+# This file stores your launcher settings
+# Place this file in the same directory as DMINLauncher executable
+
+# Directory paths
+# Batocera default DOOM WADs location
+wads=/userdata/roms/doom
+
+# Engine executable (default Batocera GZDoom)
+engine=/usr/bin
+
+# Game settings
+difficulty=2
+startmap=1
+gametype=0
+playercount=1
+networkmode=0
+hexenclass=0
+
+# Run switches
+avg=False
+fast=False
+nomonsters=False
+respawn=False
+timer=False
+timerminutes=20
+turbo=False
+turbospeed=100
+
+# Selected base game (IWAD)
+# Leave empty for no default, or set to filename like "doom2.wad"
+basegame=
+
+# Selected engine
+# For Batocera system GZDoom, use "gzdoom (system)"
+selectedengine=gzdoom (system)
