@@ -1,4 +1,4 @@
-# DMINLauncher v1.0.0
+# DMINLauncher v1.0.1
 
 <img width="2045" height="1872" alt="image" src="https://github.com/user-attachments/assets/a3865d61-7c92-48aa-9be3-da386e688345" />
 
@@ -123,4 +123,4 @@ MIT License - see LICENSE file
 
 ---
 
-**Version:** 1.0.0  
+**Version:** 1.0.1  

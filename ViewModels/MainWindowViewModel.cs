@@ -632,6 +632,20 @@ public class MainWindowViewModel : ReactiveObject
                 SelectedBaseGame = WadFiles.FirstOrDefault(w => 
                     w.RelativePath.Equals(savedBaseGame, StringComparison.OrdinalIgnoreCase));
             }
+            
+            // If no base game selected, auto-select doom2.wad or doom.wad if they exist
+            if (SelectedBaseGame == null)
+            {
+                SelectedBaseGame = WadFiles.FirstOrDefault(w => 
+                    w.RelativePath.Equals("doom2.wad", StringComparison.OrdinalIgnoreCase));
+                
+                if (SelectedBaseGame == null)
+                {
+                    SelectedBaseGame = WadFiles.FirstOrDefault(w => 
+                        w.RelativePath.Equals("doom.wad", StringComparison.OrdinalIgnoreCase));
+                }
+            }
+            
             if (!string.IsNullOrEmpty(savedEngine) && EngineOptions.Contains(savedEngine))
             {
                 SelectedEngine = savedEngine;
