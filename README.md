@@ -56,7 +56,7 @@ chmod +x DMINLauncher-linux-x64
 For Batocera, WAD files go in `/userdata/roms/gzdoom/` and the default config uses:
 ```ini
 wads=/userdata/roms/gzdoom
-engine=/userdata/roms/ports/DMINLauncher
+engine=/usr/bin
 ```
 
 See [BATOCERA-SETUP.md](BATOCERA-SETUP.md) for full setup instructions.
