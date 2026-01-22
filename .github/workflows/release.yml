@@ -1,0 +1,129 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Trigger on version tags like v1.0.0
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+    
+    - name: Restore dependencies
+      run: dotnet restore
+    
+    - name: Build Windows Release
+      run: |
+        dotnet publish -c Release -r win-x64 --self-contained \
+          -p:PublishSingleFile=true \
+          -p:IncludeNativeLibrariesForSelfExtract=true \
+          -o publish/win-x64
+    
+    - name: Build Linux Release
+      run: |
+        dotnet publish -c Release -r linux-x64 --self-contained \
+          -p:PublishSingleFile=true \
+          -p:IncludeNativeLibrariesForSelfExtract=true \
+          -o publish/linux-x64
+    
+    - name: Rename executables
+      run: |
+        mv publish/win-x64/DMINLauncher.exe publish/win-x64/DMINLauncher-win-x64.exe
+        mv publish/linux-x64/DMINLauncher publish/linux-x64/DMINLauncher-linux-x64
+        chmod +x publish/linux-x64/DMINLauncher-linux-x64
+    
+    - name: Create Windows ZIP
+      run: |
+        cd publish/win-x64
+        zip -r ../DMINLauncher-win-x64.zip DMINLauncher-win-x64.exe
+        cd ../..
+    
+    - name: Create Linux ZIP
+      run: |
+        cd publish/linux-x64
+        zip -r ../DMINLauncher-linux-x64.zip DMINLauncher-linux-x64
+        cd ../..
+    
+    - name: Extract version from tag
+      id: get_version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+    
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: DMINLauncher ${{ steps.get_version.outputs.VERSION }}
+        body: |
+          ## 🎮 DMINLauncher ${{ steps.get_version.outputs.VERSION }}
+          
+          A modern, cross-platform DOOM source port launcher with multiplayer support, mod management, and UPnP port forwarding.
+          
+          ### ✨ What's New
+          - See [CHANGELOG.md](https://github.com/RobG66/DMINLauncher/blob/main/CHANGELOG.md) for details
+          
+          ### 📥 Installation
+          
+          **Windows:**
+          1. Download `DMINLauncher-win-x64.zip`
+          2. Extract and run `DMINLauncher-win-x64.exe`
+          3. No .NET installation required - runtime is included!
+          
+          **Linux:**
+          1. Download `DMINLauncher-linux-x64.zip`
+          2. Extract and make executable: `chmod +x DMINLauncher-linux-x64`
+          3. Run: `./DMINLauncher-linux-x64`
+          
+          **Batocera:**
+          - See [BATOCERA-SETUP.md](https://github.com/RobG66/DMINLauncher/blob/main/BATOCERA-SETUP.md)
+          
+          ### 📋 Requirements
+          - DOOM WAD files (purchase from Steam/GOG or use Freedoom)
+          - A DOOM source port (GZDoom, Zandronum, etc.)
+          
+          ### 🔗 Links
+          - [Full Documentation](https://github.com/RobG66/DMINLauncher/blob/main/README.md)
+          - [Report Issues](https://github.com/RobG66/DMINLauncher/issues)
+        draft: false
+        prerelease: false
+    
+    - name: Upload Windows Release
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./publish/DMINLauncher-win-x64.zip
+        asset_name: DMINLauncher-win-x64.zip
+        asset_content_type: application/zip
+    
+    - name: Upload Linux Release
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./publish/DMINLauncher-linux-x64.zip
+        asset_name: DMINLauncher-linux-x64.zip
+        asset_content_type: application/zip
+    
+    - name: Upload Batocera Template
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./launcher.cfg.batocera-template
+        asset_name: launcher.cfg.batocera-template
+        asset_content_type: text/plain

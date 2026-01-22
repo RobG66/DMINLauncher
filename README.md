@@ -41,6 +41,8 @@ DMINLauncher is a feature-rich, user-friendly launcher for DOOM source ports lik
 
 ## 📥 Installation
 
+> **Note:** All precompiled binaries are **self-contained** and include all necessary dependencies (including .NET 9 runtime). You do **NOT** need to install .NET separately.
+
 ### Windows
 
 1. **Download** the latest `DMINLauncher-win-x64.exe` from releases
@@ -302,12 +304,14 @@ DMINLauncher provides a full UI editor for DMFLAGS. Here are some common setting
 ### App Won't Start
 
 **Windows:**
-- Install [.NET 9 Runtime](https://dotnet.microsoft.com/download/dotnet/9.0)
+- No additional installation required - .NET runtime is included
 - Run as Administrator if file dialogs fail
+- Check Windows Defender didn't block the executable
 
 **Linux:**
 - Verify executable permissions: `chmod +x DMINLauncher-linux-x64`
-- Install dependencies: `sudo apt install libx11-6 libice6 libsm6`
+- Install X11 dependencies if missing: `sudo apt install libx11-6 libice6 libsm6`
+- No need to install .NET - runtime is included in the executable
 
 ### No WAD Files Detected
 
@@ -399,13 +403,15 @@ engine=/path/to/engines
 
 ## 🛠️ Building from Source
 
+> **Note:** Only needed if you want to modify the code. Precompiled releases already include everything you need.
+
 ### Prerequisites
-- [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
+- [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0) (development only)
 - Git
 
 ### Clone and Build
 ```bash
-git clone https://github.com/yourusername/DMINLauncher.git
+git clone https://github.com/RobG66/DMINLauncher.git
 cd DMINLauncher
 dotnet restore
 dotnet build
@@ -416,19 +422,21 @@ dotnet build
 dotnet run
 ```
 
-### Publish (Single Executable)
+### Publish (Self-Contained Single Executable)
 
 **Windows:**
 ```bash
-dotnet publish -c Release -r win-x64 --self-contained
+dotnet publish -c Release -r win-x64 --self-contained -p:PublishSingleFile=true
 ```
 
 **Linux:**
 ```bash
-dotnet publish -c Release -r linux-x64 --self-contained
+dotnet publish -c Release -r linux-x64 --self-contained -p:PublishSingleFile=true
 ```
 
 Output will be in `bin/Release/net9.0/[runtime]/publish/`
+
+The `--self-contained` flag bundles the .NET runtime with the executable.
 
 ---
 

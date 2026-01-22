@@ -59,6 +59,11 @@ bld/
 # User-specific launcher configuration
 launcher.cfg
 
+# Temporary test files
+test*.txt
+test*.log
+*.log
+
 # OS files
 .DS_Store
 Thumbs.db
@@ -66,3 +71,5 @@ desktop.ini
 
 # Publish outputs
 publish/
+*.zip
+/build.ps1
