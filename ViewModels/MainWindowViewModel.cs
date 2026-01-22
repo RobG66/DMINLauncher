@@ -444,9 +444,26 @@ public class MainWindowViewModel : ReactiveObject
         var currentDir = Directory.GetCurrentDirectory();
         var configFile = Path.Combine(currentDir, "launcher.cfg");
         
+        // Detect if running on Batocera
+        bool isBatocera = Directory.Exists("/userdata/roms/ports");
+        
+        // If no config file exists and we're on Batocera, create default config
+        if (!File.Exists(configFile) && isBatocera)
+        {
+            CreateBatoceraDefaultConfig(configFile);
+        }
+        
         // Default paths
-        _wadDir = Environment.GetEnvironmentVariable("GZDOOM_DATA_DIR") ?? currentDir;
-        _engineDir = currentDir;
+        if (isBatocera)
+        {
+            _wadDir = "/userdata/roms/gzdoom";
+            _engineDir = "/userdata/roms/ports/engines";
+        }
+        else
+        {
+            _wadDir = Environment.GetEnvironmentVariable("GZDOOM_DATA_DIR") ?? currentDir;
+            _engineDir = currentDir;
+        }
         
         // Ensure absolute paths
         if (!Path.IsPathRooted(_wadDir))
@@ -483,6 +500,53 @@ public class MainWindowViewModel : ReactiveObject
         
         DataDirectory = _wadDir;
         EngineDirectory = _engineDir;
+    }
+    
+    private void CreateBatoceraDefaultConfig(string configFile)
+    {
+        try
+        {
+            var defaultConfig = new[]
+            {
+                "# DMIN Launcher Configuration for Batocera",
+                "# Auto-generated on first run",
+                "",
+                "# Directory paths",
+                "wads=/userdata/roms/gzdoom",
+                "engine=/userdata/roms/ports/engines",
+                "",
+                "# Game settings",
+                "difficulty=2",
+                "startmap=1",
+                "gametype=0",
+                "playercount=1",
+                "networkmode=0",
+                "hexenclass=0",
+                "",
+                "# Run switches",
+                "avg=False",
+                "fast=False",
+                "nomonsters=False",
+                "respawn=False",
+                "timer=False",
+                "timerminutes=20",
+                "turbo=False",
+                "turbospeed=100",
+                "",
+                "# UI settings",
+                "zoomlevel=1.0",
+                "",
+                "# Selected files will be saved here",
+                "basegame=",
+                "selectedengine=gzdoom (system)"
+            };
+            
+            File.WriteAllLines(configFile, defaultConfig);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Failed to create Batocera config: {ex.Message}");
+        }
     }
 
     private void SavePaths()
