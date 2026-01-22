@@ -105,31 +105,6 @@ See [BATOCERA-SETUP.md](BATOCERA-SETUP.md) for full setup instructions.
 - Place engine executables in that folder
 - On Linux, ensure files have execute permission
 
-**Multiplayer not working:**
-- Port 5029 UDP must be forwarded on host's router
-- Check firewall allows the engine executable
-
----
-
-## Building from Source
-
-```bash
-git clone https://github.com/RobG66/DMINLauncher.git
-cd DMINLauncher
-dotnet restore
-dotnet build
-dotnet run
-```
-
-To publish:
-```bash
-# Windows
-dotnet publish -c Release -r win-x64 --self-contained -p:PublishSingleFile=true
-
-# Linux  
-dotnet publish -c Release -r linux-x64 --self-contained -p:PublishSingleFile=true
-```
-
 ---
 
 ## License
@@ -149,4 +124,3 @@ MIT License - see LICENSE file
 ---
 
 **Version:** 1.0.0  
-**Platform:** Windows 10+, Linux (Ubuntu 20.04+, Debian 11+, Fedora 36+), Batocera v35+
