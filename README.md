@@ -1,6 +1,7 @@
 # DMINLauncher v1.0.2
 
-<img width="2045" height="1872" alt="image" src="https://github.com/user-attachments/assets/a3865d61-7c92-48aa-9be3-da386e688345" />
+<img width="2045" height="1872" alt="image" src="https://github.com/user-attachments/assets/4a396b64-62b0-405d-821c-71dde3aaf118" />
+
 
 **A cross-platform launcher for DOOM source ports**
 
@@ -18,10 +19,7 @@ One of the main goals was to provide a consistent launcher experience that is ea
 
 - Launch DOOM source ports from Windows, Linux, Batocera or standalone.
 - Load IWAD files (DOOM, DOOM II, Heretic, Hexen, etc.)
-- Load and organize mod files (WAD, PK3, PK7, ZIP)
-- Drag-and-drop mod load order
 - Map count detection for WAD/PK3 files
-- **Smart map selection** - ComboBox populated with actual maps from IWAD
 - Set difficulty, starting map, and game options
 - DMFLAGS editor (DMFLAGS, DMFLAGS2, DMFLAGS3)
 - Basic multiplayer support (LAN/Internet hosting)
