@@ -18,10 +18,7 @@ One of the main goals was to provide a consistent launcher experience that is ea
 
 - Launch DOOM source ports from Windows, Linux, Batocera or standalone.
 - Load IWAD files (DOOM, DOOM II, Heretic, Hexen, etc.)
-- Load and organize mod files (WAD, PK3, PK7, ZIP)
-- Drag-and-drop mod load order
 - Map count detection for WAD/PK3 files
-- **Smart map selection** - ComboBox populated with actual maps from IWAD
 - Set difficulty, starting map, and game options
 - DMFLAGS editor (DMFLAGS, DMFLAGS2, DMFLAGS3)
 - Basic multiplayer support (LAN/Internet hosting)
