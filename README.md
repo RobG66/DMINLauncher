@@ -4,22 +4,19 @@
 
 **A cross-platform launcher for DOOM source ports**
 
-DMINLauncher is a simple launcher for DOOM engines built with .NET 9 and Avalonia UI. It helps you organize your WAD files, load mods, and launch games.
+DMINLauncher is a simple launcher for DOOM engines.  It is built with .NET 9 and Avalonia UI. 
 
-## Support the Project
+One of the main goals was to provide a consistent launcher experience that is easy to use with Batocera, Retrobat or standalone in either Windows or Linux.  Cross-platform compatibility was essential for this to happen.  
 
-[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-Support-FFDD00?logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/silverballb)
-[![PayPal](https://img.shields.io/badge/PayPal-Donate-00457C?logo=paypal&logoColor=white)](https://paypal.me/RGanshorn?country.x=CA&locale.x=en_US)
+ If you wish, you can help support this and other projects I am working on.  If not, that is ok too.
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-lightgrey.svg)
-![.NET](https://img.shields.io/badge/.NET-9.0-purple.svg)
-
+- [PayPal](https://paypal.me/RGanshorn?country.x=CA&locale.x=en_US)
+- [Buy Me a Coffee](https://buymeacoffee.com/silverballb)
 ---
 
 ## Features
 
-- Launch DOOM source ports (UZDoom, GZDoom, Zandronum, etc.)
+- Launch DOOM source ports from Windows, Linux, Batocera or standalone.
 - Load IWAD files (DOOM, DOOM II, Heretic, Hexen, etc.)
 - Load and organize mod files (WAD, PK3, PK7, ZIP)
 - Drag-and-drop mod load order
@@ -55,11 +52,7 @@ chmod +x DMINLauncher-linux-x64
 
 ### Batocera
 
-For Batocera, WAD files go in `/userdata/roms/gzdoom/` and the default config uses:
-```ini
-wads=/userdata/roms/gzdoom
-engine=
-```
+For Batocera, WAD files go in `/userdata/roms/gzdoom/`
 
 See [BATOCERA-SETUP.md](BATOCERA-SETUP.md) for full setup instructions.
 
@@ -109,12 +102,6 @@ See [BATOCERA-SETUP.md](BATOCERA-SETUP.md) for full setup instructions.
 
 ---
 
-## License
-
-MIT License - see LICENSE file
-
----
-
 ## Credits
 
 - [Avalonia UI](https://avaloniaui.net/) - UI framework
@@ -125,4 +112,4 @@ MIT License - see LICENSE file
 
 ---
 
-**Version:** 1.0.1  
+**Version:** 1.0.2  
