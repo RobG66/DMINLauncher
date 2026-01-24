@@ -73,3 +73,5 @@ desktop.ini
 publish/
 *.zip
 /build.ps1
+/RELEASE.md
+/build-release.ps1

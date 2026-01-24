@@ -86,7 +86,7 @@ jobs:
           
           **Batocera:**
           - See [BATOCERA-SETUP.md](https://github.com/RobG66/DMINLauncher/blob/main/BATOCERA-SETUP.md)
-          - Download `launcher.cfg.batocera-template` for configuration template
+          - Configuration is automatically created on first run!
           
           ### 📋 Requirements
           - DOOM WAD files (purchase from Steam/GOG or use Freedoom)
@@ -98,6 +98,5 @@ jobs:
         files: |
           publish/DMINLauncher-win-x64.zip
           publish/DMINLauncher-linux-x64.zip
-          launcher.cfg.batocera-template
         draft: false
         prerelease: false

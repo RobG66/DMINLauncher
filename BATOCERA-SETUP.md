@@ -14,14 +14,7 @@
 
 3. **Configuration:**
    
-   **NEW in v1.0.1+**: The launcher now automatically creates a `launcher.cfg` file with default Batocera paths on first run! 
-   
-   You no longer need to manually copy the template file. Just run the launcher and it will create the configuration automatically.
-   
-   *(Optional)* If you want to pre-configure settings, you can still copy the template:
-   ```bash
-   cp launcher.cfg.batocera-template launcher.cfg
-   ```
+The launcher automatically creates a `launcher.cfg` file with default Batocera paths on first run. No manual configuration needed!
 
 ## Default Paths
 
