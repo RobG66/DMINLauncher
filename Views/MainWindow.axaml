@@ -63,7 +63,7 @@
                                 <Border Grid.Column="0" BorderBrush="Gray" BorderThickness="1" Padding="8" CornerRadius="5"
                                         Background="#40404040">
                                     <StackPanel Spacing="3">
-                                        <TextBlock Text="📁 WADs &amp; Mods" FontWeight="Bold"/>
+                                        <TextBlock Text="📁 WADs &amp; Mods Folder" FontWeight="Bold"/>
                                         <Grid ColumnDefinitions="*,Auto">
                                             <TextBox Grid.Column="0" Text="{Binding DataDirectory}" 
                                                      Watermark="Click Browse to set WADs directory..."
@@ -81,7 +81,7 @@
                                 <Border Grid.Column="2" BorderBrush="Gray" BorderThickness="1" Padding="8" CornerRadius="5"
                                         Background="#40404040">
                                     <StackPanel Spacing="3">
-                                        <TextBlock Text="📁 Engine Executable" FontWeight="Bold"/>
+                                        <TextBlock Text="📁 Engine Executable Folder" FontWeight="Bold"/>
                                         <Grid ColumnDefinitions="*,Auto">
                                             <TextBox Grid.Column="0" Text="{Binding EngineDirectory}" 
                                                      Watermark="Click Browse to set engine directory..."
@@ -101,7 +101,7 @@
                                 <!-- Base Game Selection -->
                                 <Border Grid.Column="0" BorderBrush="Gray" BorderThickness="1" Padding="8" CornerRadius="5">
                                     <StackPanel Spacing="3">
-                                        <TextBlock Text="Base Game (IWAD)" FontWeight="Bold"/>
+                                        <TextBlock Text="Base Game Selection (IWAD)" FontWeight="Bold"/>
                                         <ComboBox ItemsSource="{Binding WadFiles}" 
                                                   SelectedItem="{Binding SelectedBaseGame}"
                                                   HorizontalAlignment="Stretch">
@@ -145,7 +145,7 @@
                                 <Border Grid.Column="2" BorderBrush="Gray" BorderThickness="1" Padding="8" CornerRadius="5">
                                     <StackPanel Spacing="5">
                                         <DockPanel>
-                                            <TextBlock Text="Engine" FontWeight="Bold" DockPanel.Dock="Left"/>
+                                            <TextBlock Margin="0,0,5,0" Text="Engine Selection" FontWeight="Bold" DockPanel.Dock="Left"/>
                                             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="5">
                                                 <Button Content="Refresh" Command="{Binding DetectEnginesCommand}" 
                                                         ToolTip.Tip="Re-scan for engines in current directory"
@@ -177,9 +177,10 @@
                                             
                                             <StackPanel Grid.Column="2" Spacing="3">
                                                 <TextBlock Text="Starting Map" FontWeight="Bold"/>
-                                                <NumericUpDown Value="{Binding StartingMap}" 
-                                                             Minimum="1" Maximum="99"
-                                                             FormatString="0" Increment="1"/>
+                                                <ComboBox ItemsSource="{Binding AvailableMaps}"
+                                                          SelectedItem="{Binding SelectedMapName}"
+                                                          HorizontalAlignment="Stretch"
+                                                          ToolTip.Tip="Select starting map from IWAD"/>
                                             </StackPanel>
                                         </Grid>
                                     </StackPanel>
@@ -190,7 +191,7 @@
                             <Border BorderBrush="Gray" BorderThickness="1" Padding="10" CornerRadius="5">
                                 <StackPanel Spacing="5">
                                     <DockPanel>
-                                        <TextBlock Text="Mods (WADs/PK3s) - Load Order" FontWeight="Bold" DockPanel.Dock="Left"/>
+                                        <TextBlock Text="Select Additional Files (WADs/PK3s)" FontWeight="Bold" DockPanel.Dock="Left"/>
                                         <Button Content="Refresh" Command="{Binding RefreshFilesCommand}" 
                                                 DockPanel.Dock="Right" FontSize="10" Padding="5,2"
                                                 Margin="5,0,0,0"/>
@@ -200,7 +201,7 @@
                                         <!-- Available Mods (Left) -->
                                         <Border Grid.Column="0" BorderBrush="Gray" BorderThickness="1" CornerRadius="3">
                                             <DockPanel>
-                                                <TextBlock Text="Available Mods" FontWeight="SemiBold" FontSize="11"
+                                                <TextBlock Text="Available Files" FontWeight="SemiBold" FontSize="11"
                                                            DockPanel.Dock="Top" Margin="5,3"/>
                                                 <ListBox ItemsSource="{Binding ModFiles}" 
                                                          SelectedItem="{Binding SelectedAvailableMod}"
@@ -219,10 +220,18 @@
                                         
                                         <!-- Add/Remove Buttons (Center) -->
                                         <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="8,0" Spacing="5">
-                                            <Button Content="Add ▶" Command="{Binding AddModToLoadOrderCommand}"
-                                                    Width="90" HorizontalContentAlignment="Center"/>
-                                            <Button Content="◀ Remove" Command="{Binding RemoveModFromLoadOrderCommand}"
-                                                    Width="90" HorizontalContentAlignment="Center"/>
+                                            <Button Command="{Binding AddModToLoadOrderCommand}"
+                                                    HorizontalContentAlignment="Center"
+                                                    Padding="2"
+                                                    ToolTip.Tip="Add selected mod to load order">
+                                                <Image Source="/Assets/add.png" Width="32" Height="32"/>    
+                                            </Button>
+                                            <Button Command="{Binding RemoveModFromLoadOrderCommand}"
+                                                    HorizontalContentAlignment="Center"
+                                                    Padding="2"
+                                                    ToolTip.Tip="Remove selected mod from load order">
+                                                <Image Source="/Assets/remove.png" Width="32" Height="32"/>
+                                            </Button>
                                         </StackPanel>
                                         
                                         <!-- Selected Mods / Load Order (Right) -->
@@ -232,8 +241,16 @@
                                                            DockPanel.Dock="Top" Margin="5,3"/>
                                                 <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" 
                                                             HorizontalAlignment="Center" Margin="0,5" Spacing="5">
-                                                    <Button Content="▲ Up" Command="{Binding MoveModUpCommand}" Width="90"/>
-                                                    <Button Content="▼ Down" Command="{Binding MoveModDownCommand}" Width="90"/>
+                                                    <Button Command="{Binding MoveModUpCommand}" 
+                                                            Padding="2"
+                                                            ToolTip.Tip="Move mod up in load order">
+                                                        <Image Source="/Assets/up.png" Width="32" Height="32"/>
+                                                    </Button>
+                                                    <Button Command="{Binding MoveModDownCommand}" 
+                                                           Padding="2"
+                                                            ToolTip.Tip="Move mod down in load order">
+                                                        <Image Source="/Assets/down.png" Width="32" Height="32"/>
+                                                    </Button>
                                                 </StackPanel>
                                                 <ListBox ItemsSource="{Binding SelectedModFiles}" 
                                                          SelectedItem="{Binding SelectedLoadOrderMod}"
@@ -541,13 +558,30 @@
 
             <!-- Bottom Status and Controls -->
             <Grid Grid.Row="2" RowDefinitions="Auto,Auto" Margin="0,10,0,0">
-                <!-- Row 0: Status Message (full width) -->
-                <Border Grid.Row="0" Padding="0,0,0,8">
-                    <TextBlock Text="{Binding StatusMessage}" 
-                              FontWeight="Bold"
-                              Foreground="{Binding StatusMessageColor}"
-                              TextWrapping="Wrap"/>
-                </Border>
+                <!-- Row 0: Status Message (left) and Batocera Button (right) -->
+                <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+                    <!-- Status Message -->
+                    <TextBlock Grid.Column="0"
+                               Text="{Binding StatusMessage}" 
+                               FontWeight="Bold"
+                               Foreground="{Binding StatusMessageColor}"
+                               TextWrapping="Wrap"
+                               VerticalAlignment="Center"/>
+                    
+                    <!-- Batocera Config Button (only visible on Batocera) -->
+                    <Button Grid.Column="1"
+                            Command="{Binding SaveBatoceraConfigCommand}"
+                            IsVisible="{Binding IsBatocera}"
+                            Background="#604020"
+                            FontWeight="SemiBold"
+                            Padding="12,4"
+                            Margin="10,0,0,0">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="💾" FontSize="14" VerticalAlignment="Center"/>
+                            <TextBlock Text="Save .gzdoom Config" VerticalAlignment="Center" FontSize="12"/>
+                        </StackPanel>
+                    </Button>
+                </Grid>
                 
                 <!-- Row 1: Zoom Controls (left) and Action Buttons (right) -->
                 <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto">

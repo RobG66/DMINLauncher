@@ -63,6 +63,37 @@ Then make it executable:
 chmod +x /userdata/roms/ports/DMINLauncher.sh
 ```
 
+## Creating .gzdoom Game Configurations
+
+**NEW in v1.0.1+**: DMINLauncher can now save Batocera-compatible `.gzdoom` configuration files!
+
+When running on Batocera, a special **"💾 Save Batocera .gzdoom Config"** button appears at the bottom of the launcher. This allows you to:
+
+1. Configure your game/mod setup in DMINLauncher (select IWAD, mods, difficulty, etc.)
+2. Click the "Save Batocera .gzdoom Config" button
+3. Give it a name (e.g., "Brutal Doom.gzdoom")
+4. The file is saved to `/userdata/roms/gzdoom/`
+5. Your game will now appear in EmulationStation as a selectable entry!
+
+### What Gets Saved
+
+The `.gzdoom` file contains all your settings in the format Batocera expects:
+- Base IWAD (`-iwad DOOM2.WAD`)
+- All mods in load order (`-file mod1.pk3 mod2.wad`)
+- Difficulty level (`-skill 3`)
+- Starting map (`-warp 5`)
+- DMFLAGS for multiplayer/gameplay options
+- Run switches (fast monsters, no monsters, turbo, etc.)
+- Hexen class selection (if playing Hexen)
+
+### Example .gzdoom File
+
+```
+-iwad DOOM2.WAD -file brutalv21.pk3 maps_of_chaos.wad -skill 4 -fast
+```
+
+This single-line format is exactly what Batocera's GZDoom system requires. The filename (without extension) becomes the game name in EmulationStation.
+
 ## Troubleshooting
 
 ### App doesn't start

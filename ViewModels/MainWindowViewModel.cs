@@ -26,13 +26,19 @@ public class MainWindowViewModel : ReactiveObject
     private LauncherSettings _settings = new();
 
     // Application version
-    public string AppVersion => Assembly.GetExecutingAssembly()
-        .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
-        ?.InformationalVersion ?? "1.0.0";
+    public string AppVersion
+    {
+        get
+        {
+            var version = Assembly.GetExecutingAssembly().GetName().Version;
+            return version != null ? $"{version.Major}.{version.Minor}.{version.Build}" : "1.0.2";
+        }
+    }
 
     // OS detection for platform-specific features
     public bool IsWindows => OperatingSystem.IsWindows();
     public bool IsLinux => OperatingSystem.IsLinux();
+    public bool IsBatocera => Directory.Exists("/userdata/roms/ports");
 
     public MainWindowViewModel()
     {
@@ -79,6 +85,9 @@ public class MainWindowViewModel : ReactiveObject
         SaveCurrentSettingsCommand = ReactiveCommand.Create(SavePaths);
         DetectEnginesCommand = ReactiveCommand.Create(() => DetectAvailableEngines(_engineDir));
         AddCustomFlatpakCommand = ReactiveCommand.CreateFromTask(AddCustomFlatpak);
+        
+        // Batocera commands
+        SaveBatoceraConfigCommand = ReactiveCommand.CreateFromTask(SaveBatoceraConfig);
         
         // Zoom commands
         ZoomInCommand = ReactiveCommand.Create(ZoomIn);
@@ -139,6 +148,9 @@ public class MainWindowViewModel : ReactiveObject
     public ReactiveCommand<Unit, Unit> DetectEnginesCommand { get; }
     public ReactiveCommand<Unit, Unit> AddCustomFlatpakCommand { get; }
     
+    // Batocera commands
+    public ReactiveCommand<Unit, Unit> SaveBatoceraConfigCommand { get; }
+    
     // Zoom commands
     public ReactiveCommand<Unit, Unit> ZoomInCommand { get; }
     public ReactiveCommand<Unit, Unit> ZoomOutCommand { get; }
@@ -168,6 +180,7 @@ public class MainWindowViewModel : ReactiveObject
     public ObservableCollection<DmFlag> DmFlags1List { get; } = new();
     public ObservableCollection<DmFlag> DmFlags2List { get; } = new();
     public ObservableCollection<DmFlag> DmFlags3List { get; } = new();
+    public ObservableCollection<string> AvailableMaps { get; } = new();
 
     // Properties
     private WadFile? _selectedBaseGame;
@@ -181,6 +194,12 @@ public class MainWindowViewModel : ReactiveObject
             {
                 _settings.BaseGame = value.RelativePath;
                 ShowHexenClassSelection = value.RelativePath.Contains("hexen", StringComparison.OrdinalIgnoreCase);
+                LoadMapsFromIWAD(value);
+            }
+            else
+            {
+                AvailableMaps.Clear();
+                SelectedMapName = "";
             }
         }
     }
@@ -204,6 +223,13 @@ public class MainWindowViewModel : ReactiveObject
     {
         get => _startingMap;
         set => this.RaiseAndSetIfChanged(ref _startingMap, value);
+    }
+
+    private string _selectedMapName = "";
+    public string SelectedMapName
+    {
+        get => _selectedMapName;
+        set => this.RaiseAndSetIfChanged(ref _selectedMapName, value);
     }
 
     private GameType _gameType = GameType.SinglePlayer;
@@ -517,7 +543,7 @@ public class MainWindowViewModel : ReactiveObject
                 "",
                 "# Game settings",
                 "difficulty=2",
-                "startmap=1",
+                "startmap=E1M1",
                 "gametype=0",
                 "playercount=1",
                 "networkmode=0",
@@ -566,7 +592,7 @@ public class MainWindowViewModel : ReactiveObject
                 "",
                 "# Game settings",
                 $"difficulty={(int)SelectedDifficulty}",
-                $"startmap={StartingMap}",
+                $"startmap={SelectedMapName}",
                 $"gametype={(int)GameType}",
                 $"playercount={PlayerCount}",
                 $"networkmode={(int)NetworkMode}",
@@ -628,8 +654,8 @@ public class MainWindowViewModel : ReactiveObject
                             SelectedDifficulty = (Enums.Difficulty)diff;
                         break;
                     case "startmap":
-                        if (int.TryParse(value, out var map))
-                            StartingMap = map;
+                        // Store map name for later application (after maps are loaded)
+                        SelectedMapName = value;
                         break;
                     case "gametype":
                         if (int.TryParse(value, out var gt))
@@ -958,10 +984,30 @@ public class MainWindowViewModel : ReactiveObject
         args.Add("-skill");
         args.Add(((int)SelectedDifficulty).ToString());
 
-        if (StartingMap > 1)
+        // Handle starting map
+        if (!string.IsNullOrEmpty(SelectedMapName))
         {
-            args.Add("-warp");
-            args.Add(StartingMap.ToString());
+            // Check if it's ExMy format (E1M1) or MAPxx format
+            if (SelectedMapName.StartsWith("E") && SelectedMapName.Length == 4)
+            {
+                // ExMy format: -warp episode map (e.g., E2M3 -> -warp 2 3)
+                if (char.IsDigit(SelectedMapName[1]) && char.IsDigit(SelectedMapName[3]))
+                {
+                    args.Add("-warp");
+                    args.Add(SelectedMapName[1].ToString()); // Episode number
+                    args.Add(SelectedMapName[3].ToString()); // Map number
+                }
+            }
+            else if (SelectedMapName.StartsWith("MAP") && SelectedMapName.Length >= 5)
+            {
+                // MAPxx format: -warp xx (e.g., MAP07 -> -warp 7)
+                var mapNum = SelectedMapName.Substring(3);
+                if (int.TryParse(mapNum, out var mapNumber))
+                {
+                    args.Add("-warp");
+                    args.Add(mapNumber.ToString());
+                }
+            }
         }
 
         var dmFlags1 = DmFlags1List.Where(f => f.IsChecked).Sum(f => f.BitValue);
@@ -1171,10 +1217,30 @@ public class MainWindowViewModel : ReactiveObject
         args.Add("-skill");
         args.Add(((int)SelectedDifficulty).ToString());
 
-        if (StartingMap > 1)
+        // Handle starting map
+        if (!string.IsNullOrEmpty(SelectedMapName))
         {
-            args.Add("-warp");
-            args.Add(StartingMap.ToString());
+            // Check if it's ExMy format (E1M1) or MAPxx format
+            if (SelectedMapName.StartsWith("E") && SelectedMapName.Length == 4)
+            {
+                // ExMy format: -warp episode map (e.g., E2M3 -> -warp 2 3)
+                if (char.IsDigit(SelectedMapName[1]) && char.IsDigit(SelectedMapName[3]))
+                {
+                    args.Add("-warp");
+                    args.Add(SelectedMapName[1].ToString()); // Episode number
+                    args.Add(SelectedMapName[3].ToString()); // Map number
+                }
+            }
+            else if (SelectedMapName.StartsWith("MAP") && SelectedMapName.Length >= 5)
+            {
+                // MAPxx format: -warp xx (e.g., MAP07 -> -warp 7)
+                var mapNum = SelectedMapName.Substring(3);
+                if (int.TryParse(mapNum, out var mapNumber))
+                {
+                    args.Add("-warp");
+                    args.Add(mapNumber.ToString());
+                }
+            }
         }
 
         var dmFlags1 = DmFlags1List.Where(f => f.IsChecked).Sum(f => f.BitValue);
@@ -1444,10 +1510,29 @@ public class MainWindowViewModel : ReactiveObject
             args.Add(((int)SelectedDifficulty).ToString());
 
             // Starting map
-            if (StartingMap > 1)
+            if (!string.IsNullOrEmpty(SelectedMapName))
             {
-                args.Add("-warp");
-                args.Add(StartingMap.ToString());
+                // Check if it's ExMy format (E1M1) or MAPxx format
+                if (SelectedMapName.StartsWith("E") && SelectedMapName.Length == 4)
+                {
+                    // ExMy format: -warp episode map (e.g., E2M3 -> -warp 2 3)
+                    if (char.IsDigit(SelectedMapName[1]) && char.IsDigit(SelectedMapName[3]))
+                    {
+                        args.Add("-warp");
+                        args.Add(SelectedMapName[1].ToString()); // Episode number
+                        args.Add(SelectedMapName[3].ToString()); // Map number
+                    }
+                }
+                else if (SelectedMapName.StartsWith("MAP") && SelectedMapName.Length >= 5)
+                {
+                    // MAPxx format: -warp xx (e.g., MAP07 -> -warp 7)
+                    var mapNum = SelectedMapName.Substring(3);
+                    if (int.TryParse(mapNum, out var mapNumber))
+                    {
+                        args.Add("-warp");
+                        args.Add(mapNumber.ToString());
+                    }
+                }
             }
 
             // DMFLAGS
@@ -2742,5 +2827,204 @@ public class MainWindowViewModel : ReactiveObject
     private void ResetZoom()
     {
         ZoomLevel = 1.0;
+    }
+
+    private void LoadMapsFromIWAD(WadFile iwad)
+    {
+        try
+        {
+            AvailableMaps.Clear();
+            
+            var wadInfo = Services.WadParser.Parse(iwad.FullPath);
+            
+            if (wadInfo.IsValid && wadInfo.MapNames.Count > 0)
+            {
+                foreach (var mapName in wadInfo.MapNames)
+                {
+                    AvailableMaps.Add(mapName);
+                }
+                
+                // Auto-select first map if nothing is selected
+                if (string.IsNullOrEmpty(SelectedMapName) && AvailableMaps.Count > 0)
+                {
+                    SelectedMapName = AvailableMaps[0];
+                }
+                // If current selection doesn't exist in new IWAD, reset to first
+                else if (!AvailableMaps.Contains(SelectedMapName) && AvailableMaps.Count > 0)
+                {
+                    SelectedMapName = AvailableMaps[0];
+                }
+            }
+            else
+            {
+                // Fallback: add a default starting map based on game type
+                if (iwad.RelativePath.Contains("doom2", StringComparison.OrdinalIgnoreCase) ||
+                    iwad.RelativePath.Contains("plutonia", StringComparison.OrdinalIgnoreCase) ||
+                    iwad.RelativePath.Contains("tnt", StringComparison.OrdinalIgnoreCase) ||
+                    iwad.RelativePath.Contains("hexen", StringComparison.OrdinalIgnoreCase))
+                {
+                    AvailableMaps.Add("MAP01");
+                    SelectedMapName = "MAP01";
+                }
+                else
+                {
+                    AvailableMaps.Add("E1M1");
+                    SelectedMapName = "E1M1";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Failed to load maps from IWAD: {ex.Message}");
+            // Add default map as fallback
+            AvailableMaps.Add("E1M1");
+            SelectedMapName = "E1M1";
+        }
+    }
+
+    private async Task SaveBatoceraConfig()
+    {
+        try
+        {
+            var topLevel = Avalonia.Application.Current?.ApplicationLifetime is 
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop 
+                ? desktop.MainWindow : null;
+            
+            if (topLevel == null) return;
+
+            // Try to set the start location to the gzdoom folder if we're on Batocera
+            var startLocation = IsBatocera 
+                ? await topLevel.StorageProvider.TryGetFolderFromPathAsync(new Uri("/userdata/roms/gzdoom"))
+                : null;
+
+            // Use modern StorageProvider API to save to the gzdoom folder
+            var file = await topLevel.StorageProvider.SaveFilePickerAsync(new Avalonia.Platform.Storage.FilePickerSaveOptions
+            {
+                Title = "Save Batocera GZDoom Configuration",
+                SuggestedFileName = "My Game.gzdoom",
+                DefaultExtension = "gzdoom",
+                FileTypeChoices = new[]
+                {
+                    new Avalonia.Platform.Storage.FilePickerFileType("Batocera GZDoom Config")
+                    {
+                        Patterns = new[] { "*.gzdoom" }
+                    }
+                },
+                ShowOverwritePrompt = true,
+                SuggestedStartLocation = startLocation
+            });
+
+            if (file == null) return;
+
+            var args = new System.Collections.Generic.List<string>();
+
+            // Base IWAD
+            if (SelectedBaseGame != null)
+            {
+                args.Add("-iwad");
+                args.Add(SelectedBaseGame.RelativePath);
+            }
+
+            // Mods in load order
+            if (SelectedModFiles.Any())
+            {
+                args.Add("-file");
+                foreach (var mod in SelectedModFiles)
+                {
+                    args.Add(mod.RelativePath);
+                }
+            }
+
+            // Difficulty
+            args.Add("-skill");
+            args.Add(((int)SelectedDifficulty + 1).ToString()); // GZDoom uses 1-5, not 0-4
+
+            // Starting map
+            if (!string.IsNullOrEmpty(SelectedMapName))
+            {
+                // Check if it's ExMy format (E1M1) or MAPxx format
+                if (SelectedMapName.StartsWith("E") && SelectedMapName.Length == 4)
+                {
+                    // ExMy format: -warp episode map (e.g., E2M3 -> -warp 2 3)
+                    if (char.IsDigit(SelectedMapName[1]) && char.IsDigit(SelectedMapName[3]))
+                    {
+                        args.Add("-warp");
+                        args.Add(SelectedMapName[1].ToString()); // Episode number
+                        args.Add(SelectedMapName[3].ToString()); // Map number
+                    }
+                }
+                else if (SelectedMapName.StartsWith("MAP") && SelectedMapName.Length >= 5)
+                {
+                    // MAPxx format: -warp xx (e.g., MAP07 -> -warp 7)
+                    var mapNum = SelectedMapName.Substring(3);
+                    if (int.TryParse(mapNum, out var mapNumber))
+                    {
+                        args.Add("-warp");
+                        args.Add(mapNumber.ToString());
+                    }
+                }
+            }
+
+            // DMFLAGS
+            var dmFlags1 = DmFlags1List.Where(f => f.IsChecked).Sum(f => f.BitValue);
+            var dmFlags2 = DmFlags2List.Where(f => f.IsChecked).Sum(f => f.BitValue);
+            var dmFlags3 = DmFlags3List.Where(f => f.IsChecked).Sum(f => f.BitValue);
+
+            if (dmFlags1 != 0)
+            {
+                args.Add("+set");
+                args.Add("dmflags");
+                args.Add(dmFlags1.ToString());
+            }
+            if (dmFlags2 != 0)
+            {
+                args.Add("+set");
+                args.Add("dmflags2");
+                args.Add(dmFlags2.ToString());
+            }
+            if (dmFlags3 != 0)
+            {
+                args.Add("+set");
+                args.Add("dmflags3");
+                args.Add(dmFlags3.ToString());
+            }
+
+            // Run switches
+            if (AvgSwitch) args.Add("-avg");
+            if (FastSwitch) args.Add("-fast");
+            if (NoMonstersSwitch) args.Add("-nomonsters");
+            if (RespawnSwitch) args.Add("-respawn");
+            if (TimerSwitch)
+            {
+                args.Add("-timer");
+                args.Add(TimerMinutes.ToString());
+            }
+            if (TurboSwitch)
+            {
+                args.Add("-turbo");
+                args.Add(TurboSpeed.ToString());
+            }
+
+            // Hexen class
+            if (ShowHexenClassSelection)
+            {
+                args.Add("+playerclass");
+                args.Add(HexenClass.ToString().ToLower());
+            }
+
+            // Write to file (single line as per Batocera requirements)
+            using var stream = await file.OpenWriteAsync();
+            using var writer = new StreamWriter(stream);
+            await writer.WriteAsync(string.Join(" ", args));
+            
+            StatusMessage = $"✅ Batocera config saved: {file.Name}";
+            StatusMessageColor = "LimeGreen";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"❌ Save error: {ex.Message}";
+            StatusMessageColor = "Red";
+            System.Diagnostics.Debug.WriteLine($"Save Batocera config error: {ex.Message}");
+        }
     }
 }

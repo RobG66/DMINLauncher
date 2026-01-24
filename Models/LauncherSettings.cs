@@ -6,7 +6,7 @@ namespace DMINLauncher.Models;
 public class LauncherSettings
 {
     public string BaseGame { get; set; } = "None Selected";
-    public string SelectedEngine { get; set; } = "batocera";
+    public string SelectedEngine { get; set; } = "";
     public List<string> SelectedMods { get; set; } = new();
     public List<string> RunSwitches { get; set; } = new();
     public int TurboSpeed { get; set; } = 100;

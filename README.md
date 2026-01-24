@@ -1,4 +1,4 @@
-# DMINLauncher v1.0.1
+# DMINLauncher v1.0.2
 
 <img width="2045" height="1872" alt="image" src="https://github.com/user-attachments/assets/a3865d61-7c92-48aa-9be3-da386e688345" />
 
@@ -24,12 +24,14 @@ DMINLauncher is a simple launcher for DOOM engines built with .NET 9 and Avaloni
 - Load and organize mod files (WAD, PK3, PK7, ZIP)
 - Drag-and-drop mod load order
 - Map count detection for WAD/PK3 files
+- **Smart map selection** - ComboBox populated with actual maps from IWAD
 - Set difficulty, starting map, and game options
 - DMFLAGS editor (DMFLAGS, DMFLAGS2, DMFLAGS3)
 - Basic multiplayer support (LAN/Internet hosting)
 - UPnP port forwarding helper
 - Saves settings to launcher.cfg
 - UI zoom (Ctrl+Plus/Minus)
+- **🆕 Batocera: Save .gzdoom configuration files for EmulationStation integration**
 
 ---
 

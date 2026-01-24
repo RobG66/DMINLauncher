@@ -5,15 +5,27 @@ All notable changes to DMINLauncher will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.1] - 2024-01-15
+## [1.0.2] - 2024-01-15
 
 ### Added
 - 🔧 Automatic launcher.cfg creation with default paths on first run
 - ⚡ Improved first-time user experience - no manual configuration needed
+- 💾 **Batocera: Save .gzdoom configuration files** - Create game entries for EmulationStation
+- 🎮 Batocera-specific button appears when running on Batocera systems
+- 🗺️ **Smart Map Selection** - ComboBox populated with actual maps from selected IWAD
+- 📋 Proper ExMy (E1M1, E2M3) and MAPxx (MAP01, MAP15) format support for all games
+- 🎯 Automatic map detection from Doom, Doom II, Heretic, Hexen, and Strife IWADs
 
 ### Changed
 - 📝 Batocera users no longer need to manually copy launcher.cfg.batocera-template
 - 🎯 Default configuration is now automatically generated with platform-appropriate paths
+- 📁 .gzdoom files can be saved directly to `/userdata/roms/gzdoom/` on Batocera
+- 🔢 Starting Map now shows actual map names instead of numeric input
+- 🖼️ Mod management buttons now use icon images (add.png, remove.png, up.png, down.png)
+- 🪟 Window title now shows clean version number without git hash
+
+### Fixed
+- ✅ Batocera button now appears on the same line as status message for better space utilization
 
 ## [1.0.0] - 2024-01-XX
 
@@ -56,4 +68,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Open.NAT for UPnP port forwarding
 - Support for WAD, PWAD, PK3, PK7, IPK3, and ZIP formats
 
+[1.0.2]: https://github.com/RobG66/DMINLauncher/releases/tag/v1.0.2
 [1.0.0]: https://github.com/RobG66/DMINLauncher/releases/tag/v1.0.0
