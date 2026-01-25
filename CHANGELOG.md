@@ -5,6 +5,29 @@ All notable changes to DMINLauncher will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-01-XX
+
+### Added
+- 🐧 **Flatpak Engine Support** - Linux/Batocera users can now select Flatpak engines (e.g., org.zdoom.GZDoom)
+- 🔄 **Dual Engine Storage** - Separate storage for file path and Flatpak engines, switch between them without losing selections
+- 📂 **Subdirectory WAD Scanning** - IWADs directory now scans subdirectories for WAD files
+- 🎨 **Compact Radio Buttons** - Smaller, cleaner radio button style (30% smaller circles)
+- ⚠️ **Flatpak Permission Management** - Automatic filesystem permission configuration using `flatpak override --user`
+- ⌨️ **ESC Key Exit Confirmation** - Press ESC to show exit dialog, ESC again to cancel, Enter to confirm
+- 🚪 **Exit Confirmation Dialog** - Exit button and ESC key both show "Are you sure?" confirmation
+
+### Changed
+- 🎮 **Engine Selection UI** - Radio buttons for File Path vs Flatpak (Linux only), cleaner layout
+- 📊 **IWAD Info Display** - Shows full file path and complete map list instead of redundant stats
+- 🎨 **UI Refinements** - Aligned spacing between WADs and Engine borders, colored bottom action buttons
+- ⚙️ **Batocera Defaults** - Default engine path changed from `/userdata/roms/ports/engines/gzdoom` to `/usr/bin/gzdoom`
+- 📝 **Config File Format** - Now stores separate `enginefilepath` and `engineflatpak` values
+
+### Fixed
+- ✅ **Flatpak Dialog Positioning** - Dialogs now properly sized on Batocera (not fullscreen)
+- ✅ **ESC Key Handling** - All dialogs can be closed with ESC key
+- ✅ **Radio Button Visibility** - Properly hidden on Windows, shown on Linux/Batocera
+
 ## [1.0.3] - 2024-01-15
 
 ### Changed

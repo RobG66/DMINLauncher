@@ -3,6 +3,7 @@
              x:Class="DMINLauncher.App"
              RequestedThemeVariant="Dark">
     <Application.Styles>
-        <FluentTheme />
+           <FluentTheme DensityStyle="Compact" />
+           <StyleInclude Source="Styles/CompactRadioButton.axaml"/>
     </Application.Styles>
 </Application>

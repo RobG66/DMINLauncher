@@ -22,7 +22,7 @@ namespace DMINLauncher.ViewModels;
 public class MainWindowViewModel : ReactiveObject
 {
     private string _wadDir = "";
-    private string _engineDir = "";
+    private string _engineExecutable = "";
     private LauncherSettings _settings = new();
 
     // Application version
@@ -46,11 +46,8 @@ public class MainWindowViewModel : ReactiveObject
         LoadSavedPaths();
         
         // Initialize combo box item sources
-        EngineOptions = new ObservableCollection<string>();
-        DetectAvailableEngines();
-        
-        DifficultyOptions = new ObservableCollection<Difficulty>(
-            Enum.GetValues<Difficulty>());
+        DifficultyOptions = new ObservableCollection<string>();
+        UpdateDifficultyNames();
         GameTypeOptions = new ObservableCollection<GameType>(
             Enum.GetValues<GameType>());
         NetworkModeOptions = new ObservableCollection<NetworkMode>(
@@ -68,12 +65,26 @@ public class MainWindowViewModel : ReactiveObject
         // Fetch IP addresses based on loaded network mode
         InitializeNetworkInfo();
 
-        LaunchGameCommand = ReactiveCommand.Create(LaunchGame);
+        // LaunchGameCommand can only execute when IWAD and engine are selected
+        var canLaunch = this.WhenAnyValue(
+            x => x.SelectedBaseGame,
+            x => x.EngineExecutable,
+            (iwad, engine) => iwad != null && !string.IsNullOrEmpty(engine));
+        LaunchGameCommand = ReactiveCommand.Create(LaunchGame, canLaunch);
         ShowLaunchSummaryCommand = ReactiveCommand.CreateFromTask(ShowLaunchSummary);
         RefreshFilesCommand = ReactiveCommand.Create(() =>
         {
             RefreshWadFiles();
             RefreshModFiles();
+            
+            // Clear any previous configuration warnings when manually refreshing
+            if (StatusMessage.Contains("Configuration warnings", StringComparison.OrdinalIgnoreCase) ||
+                StatusMessage.Contains("WAD not found", StringComparison.OrdinalIgnoreCase) ||
+                StatusMessage.Contains("IWAD not found", StringComparison.OrdinalIgnoreCase))
+            {
+                StatusMessage = "✅ Files refreshed";
+                StatusMessageColor = "LimeGreen";
+            }
         });
         SaveSettingsCommand = ReactiveCommand.CreateFromTask(SaveSettings);
         LoadSettingsCommand = ReactiveCommand.CreateFromTask(LoadSettings);
@@ -81,10 +92,9 @@ public class MainWindowViewModel : ReactiveObject
         AutoConfigurePortCommand = ReactiveCommand.CreateFromTask(AutoConfigurePort);
         ResetSettingsCommand = ReactiveCommand.Create(ResetSettings);
         ChangeDataDirectoryCommand = ReactiveCommand.CreateFromTask(ChangeDataDirectory);
-        ChangeEngineDirectoryCommand = ReactiveCommand.CreateFromTask(ChangeEngineDirectory);
-        SaveCurrentSettingsCommand = ReactiveCommand.Create(SavePaths);
-        DetectEnginesCommand = ReactiveCommand.Create(() => DetectAvailableEngines(_engineDir));
+        ChangeEngineExecutableCommand = ReactiveCommand.CreateFromTask(ChangeEngineExecutable);
         AddCustomFlatpakCommand = ReactiveCommand.CreateFromTask(AddCustomFlatpak);
+        SaveCurrentSettingsCommand = ReactiveCommand.Create(SavePaths);
         
         // Batocera commands
         SaveBatoceraConfigCommand = ReactiveCommand.CreateFromTask(SaveBatoceraConfig);
@@ -93,6 +103,10 @@ public class MainWindowViewModel : ReactiveObject
         ZoomInCommand = ReactiveCommand.Create(ZoomIn);
         ZoomOutCommand = ReactiveCommand.Create(ZoomOut);
         ResetZoomCommand = ReactiveCommand.Create(ResetZoom);
+        
+        // Application commands
+        ExitCommand = ReactiveCommand.Create(ExitApplication);
+        ShowExitConfirmationCommand = ReactiveCommand.CreateFromTask(ShowExitConfirmation);
         
         // Mod load order commands
         AddModToLoadOrderCommand = ReactiveCommand.Create(AddModToLoadOrder);
@@ -143,10 +157,9 @@ public class MainWindowViewModel : ReactiveObject
     public ReactiveCommand<Unit, Unit> AutoConfigurePortCommand { get; }
     public ReactiveCommand<Unit, Unit> ResetSettingsCommand { get; }
     public ReactiveCommand<Unit, Unit> ChangeDataDirectoryCommand { get; }
-    public ReactiveCommand<Unit, Unit> ChangeEngineDirectoryCommand { get; }
-    public ReactiveCommand<Unit, Unit> SaveCurrentSettingsCommand { get; }
-    public ReactiveCommand<Unit, Unit> DetectEnginesCommand { get; }
+    public ReactiveCommand<Unit, Unit> ChangeEngineExecutableCommand { get; }
     public ReactiveCommand<Unit, Unit> AddCustomFlatpakCommand { get; }
+    public ReactiveCommand<Unit, Unit> SaveCurrentSettingsCommand { get; }
     
     // Batocera commands
     public ReactiveCommand<Unit, Unit> SaveBatoceraConfigCommand { get; }
@@ -156,6 +169,10 @@ public class MainWindowViewModel : ReactiveObject
     public ReactiveCommand<Unit, Unit> ZoomOutCommand { get; }
     public ReactiveCommand<Unit, Unit> ResetZoomCommand { get; }
     
+    // Application commands
+    public ReactiveCommand<Unit, Unit> ExitCommand { get; }
+    public ReactiveCommand<Unit, Unit> ShowExitConfirmationCommand { get; }
+    
     // Mod load order commands
     public ReactiveCommand<Unit, Unit> AddModToLoadOrderCommand { get; }
     public ReactiveCommand<Unit, Unit> RemoveModFromLoadOrderCommand { get; }
@@ -163,14 +180,10 @@ public class MainWindowViewModel : ReactiveObject
     public ReactiveCommand<Unit, Unit> MoveModDownCommand { get; }
 
     // ComboBox Item Sources (MVVM compliant)
-    public ObservableCollection<string> EngineOptions { get; }
-    public ObservableCollection<Difficulty> DifficultyOptions { get; }
+    public ObservableCollection<string> DifficultyOptions { get; }
     public ObservableCollection<GameType> GameTypeOptions { get; }
     public ObservableCollection<NetworkMode> NetworkModeOptions { get; }
     public ObservableCollection<HexenClass> HexenClassOptions { get; }
-    
-    // Engine executable paths (key: display name, value: executable path)
-    private Dictionary<string, string> _enginePaths = new();
 
     // Observable Collections
     public ObservableCollection<WadFile> WadFiles { get; } = new();
@@ -190,11 +203,27 @@ public class MainWindowViewModel : ReactiveObject
         set
         {
             this.RaiseAndSetIfChanged(ref _selectedBaseGame, value);
+            this.RaisePropertyChanged(nameof(CanLaunchGame));
             if (value != null)
             {
                 _settings.BaseGame = value.RelativePath;
                 ShowHexenClassSelection = value.RelativePath.Contains("hexen", StringComparison.OrdinalIgnoreCase);
                 LoadMapsFromIWAD(value);
+                UpdateDifficultyNames(); // Update difficulty names based on selected game
+                
+                // Reset to default difficulty and first map when IWAD changes
+                SelectedDifficulty = Difficulty.Easy;
+                if (AvailableMaps.Count > 0)
+                {
+                    SelectedMapName = AvailableMaps[0];
+                }
+                
+                // Clear IWAD-related warnings when a valid IWAD is selected
+                if (StatusMessage.Contains("IWAD not found", StringComparison.OrdinalIgnoreCase))
+                {
+                    StatusMessage = "";
+                    StatusMessageColor = "White";
+                }
             }
             else
             {
@@ -204,12 +233,62 @@ public class MainWindowViewModel : ReactiveObject
         }
     }
 
-    private string _selectedEngine = string.Empty;
-    public string SelectedEngine
+    private string _engineFilePath = string.Empty;
+    private string _engineFlatpakPath = string.Empty;
+    
+    public string EngineExecutable
     {
-        get => _selectedEngine;
-        set => this.RaiseAndSetIfChanged(ref _selectedEngine, value);
+        get => _useFilePathEngine ? _engineFilePath : _engineFlatpakPath;
+        set
+        {
+            if (_useFilePathEngine)
+            {
+                this.RaiseAndSetIfChanged(ref _engineFilePath, value);
+            }
+            else
+            {
+                this.RaiseAndSetIfChanged(ref _engineFlatpakPath, value);
+            }
+            this.RaisePropertyChanged(nameof(EngineExecutable));
+            this.RaisePropertyChanged(nameof(CanLaunchGame));
+        }
     }
+    
+    // Engine selection mode (File Path vs Flatpak)
+    private bool _useFilePathEngine = true;
+    public bool UseFilePathEngine
+    {
+        get => _useFilePathEngine;
+        set
+        {
+            if (this.RaiseAndSetIfChanged(ref _useFilePathEngine, value) && value)
+            {
+                _useFlatpakEngine = false;
+                this.RaisePropertyChanged(nameof(UseFlatpakEngine));
+                this.RaisePropertyChanged(nameof(EngineExecutable));
+                this.RaisePropertyChanged(nameof(CanLaunchGame));
+            }
+        }
+    }
+    
+    private bool _useFlatpakEngine = false;
+    public bool UseFlatpakEngine
+    {
+        get => _useFlatpakEngine;
+        set
+        {
+            if (this.RaiseAndSetIfChanged(ref _useFlatpakEngine, value) && value)
+            {
+                _useFilePathEngine = false;
+                this.RaisePropertyChanged(nameof(UseFilePathEngine));
+                this.RaisePropertyChanged(nameof(EngineExecutable));
+                this.RaisePropertyChanged(nameof(CanLaunchGame));
+            }
+        }
+    }
+
+    // Property to check if launch is allowed
+    public bool CanLaunchGame => SelectedBaseGame != null && !string.IsNullOrEmpty(EngineExecutable);
 
     private Difficulty _selectedDifficulty = Difficulty.Normal;
     public Difficulty SelectedDifficulty
@@ -444,13 +523,6 @@ public class MainWindowViewModel : ReactiveObject
         set => this.RaiseAndSetIfChanged(ref _dataDirectory, value);
     }
 
-    private string _engineDirectory = "";
-    public string EngineDirectory
-    {
-        get => _engineDirectory;
-        set => this.RaiseAndSetIfChanged(ref _engineDirectory, value);
-    }
-
     private WadFile? _selectedAvailableMod;
     public WadFile? SelectedAvailableMod
     {
@@ -483,19 +555,17 @@ public class MainWindowViewModel : ReactiveObject
         if (isBatocera)
         {
             _wadDir = "/userdata/roms/gzdoom";
-            _engineDir = "/userdata/roms/ports/engines";
+            _engineFilePath = "/usr/bin/gzdoom";
         }
         else
         {
             _wadDir = Environment.GetEnvironmentVariable("GZDOOM_DATA_DIR") ?? currentDir;
-            _engineDir = currentDir;
+            _engineFilePath = "";
         }
         
         // Ensure absolute paths
         if (!Path.IsPathRooted(_wadDir))
             _wadDir = Path.GetFullPath(_wadDir);
-        if (!Path.IsPathRooted(_engineDir))
-            _engineDir = Path.GetFullPath(_engineDir);
         
         // Try to load saved paths from config file
         try
@@ -517,15 +587,38 @@ public class MainWindowViewModel : ReactiveObject
                     
                     if (key == "wads" && !string.IsNullOrEmpty(value) && Directory.Exists(value))
                         _wadDir = value;
-                    else if (key == "engine" && !string.IsNullOrEmpty(value) && Directory.Exists(value))
-                        _engineDir = value;
+                    else if (key == "enginefilepath" && !string.IsNullOrEmpty(value))
+                        _engineFilePath = value;
+                    else if (key == "engineflatpak" && !string.IsNullOrEmpty(value))
+                        _engineFlatpakPath = value;
+                    else if (key == "usefilepathengine" && bool.TryParse(value, out var useFilePath))
+                    {
+                        _useFilePathEngine = useFilePath;
+                        _useFlatpakEngine = !useFilePath;
+                    }
+                    // Legacy support for old config format
+                    else if (key == "engineexe" && !string.IsNullOrEmpty(value))
+                    {
+                        if (value.StartsWith("flatpak:", StringComparison.OrdinalIgnoreCase))
+                        {
+                            _engineFlatpakPath = value;
+                            _useFlatpakEngine = true;
+                            _useFilePathEngine = false;
+                        }
+                        else
+                        {
+                            _engineFilePath = value;
+                        }
+                    }
                 }
             }
         }
         catch { } // Ignore errors, use defaults
         
         DataDirectory = _wadDir;
-        EngineDirectory = _engineDir;
+        this.RaisePropertyChanged(nameof(UseFilePathEngine));
+        this.RaisePropertyChanged(nameof(UseFlatpakEngine));
+        this.RaisePropertyChanged(nameof(EngineExecutable));
     }
     
     private void CreateBatoceraDefaultConfig(string configFile)
@@ -534,12 +627,14 @@ public class MainWindowViewModel : ReactiveObject
         {
             var defaultConfig = new[]
             {
-                "# DMIN Launcher Configuration for Batocera",
+                "# DMINLauncher Configuration for Batocera",
                 "# Auto-generated on first run",
                 "",
                 "# Directory paths",
                 "wads=/userdata/roms/gzdoom",
-                "engine=/userdata/roms/ports/engines",
+                "enginefilepath=/usr/bin/gzdoom",
+                "engineflatpak=",
+                "usefilepathengine=True",
                 "",
                 "# Game settings",
                 "difficulty=2",
@@ -583,12 +678,14 @@ public class MainWindowViewModel : ReactiveObject
             
             var lines = new List<string>
             {
-                "# DMIN Launcher Configuration",
+                "# DMINLauncher Configuration",
                 "# This file stores your launcher settings",
                 "",
                 "# Directory paths",
                 $"wads={_wadDir}",
-                $"engine={_engineDir}",
+                $"enginefilepath={_engineFilePath}",
+                $"engineflatpak={_engineFlatpakPath}",
+                $"usefilepathengine={UseFilePathEngine}",
                 "",
                 "# Game settings",
                 $"difficulty={(int)SelectedDifficulty}",
@@ -613,8 +710,15 @@ public class MainWindowViewModel : ReactiveObject
                 "",
                 "# Selected base game",
                 $"basegame={SelectedBaseGame?.RelativePath ?? ""}",
-                $"selectedengine={SelectedEngine ?? ""}"
+                "",
+                "# Selected WADs/Mods (in load order)"
             };
+            
+            // Add selected mods
+            foreach (var mod in SelectedModFiles.OrderBy(m => m.LoadOrder))
+            {
+                lines.Add($"selectedmod={mod.RelativePath}");
+            }
             
             File.WriteAllLines(configFile, lines);
         }
@@ -632,7 +736,8 @@ public class MainWindowViewModel : ReactiveObject
             if (!File.Exists(configFile)) return;
             
             string? savedBaseGame = null;
-            string? savedEngine = null;
+            var savedMods = new List<string>();
+            var warnings = new List<string>();
             
             foreach (var line in File.ReadAllLines(configFile))
             {
@@ -710,8 +815,9 @@ public class MainWindowViewModel : ReactiveObject
                     case "basegame":
                         savedBaseGame = value;
                         break;
-                    case "selectedengine":
-                        savedEngine = value;
+                    case "selectedmod":
+                        if (!string.IsNullOrEmpty(value))
+                            savedMods.Add(value);
                         break;
                 }
             }
@@ -721,6 +827,17 @@ public class MainWindowViewModel : ReactiveObject
             {
                 SelectedBaseGame = WadFiles.FirstOrDefault(w => 
                     w.RelativePath.Equals(savedBaseGame, StringComparison.OrdinalIgnoreCase));
+                
+                // Validate if file exists
+                if (SelectedBaseGame != null && !File.Exists(SelectedBaseGame.FullPath))
+                {
+                    warnings.Add($"IWAD not found: {savedBaseGame}");
+                    SelectedBaseGame = null;
+                }
+                else if (SelectedBaseGame == null && !string.IsNullOrEmpty(savedBaseGame))
+                {
+                    warnings.Add($"IWAD not found: {savedBaseGame}");
+                }
             }
             
             // If no base game selected, auto-select doom2.wad or doom.wad if they exist
@@ -736,9 +853,37 @@ public class MainWindowViewModel : ReactiveObject
                 }
             }
             
-            if (!string.IsNullOrEmpty(savedEngine) && EngineOptions.Contains(savedEngine))
+            // Load saved mods
+            foreach (var modPath in savedMods)
             {
-                SelectedEngine = savedEngine;
+                var mod = ModFiles.FirstOrDefault(m => 
+                    m.RelativePath.Equals(modPath, StringComparison.OrdinalIgnoreCase));
+                
+                if (mod != null)
+                {
+                    // Validate file exists
+                    if (File.Exists(mod.FullPath))
+                    {
+                        ModFiles.Remove(mod);
+                        mod.LoadOrder = SelectedModFiles.Count;
+                        SelectedModFiles.Add(mod);
+                    }
+                    else
+                    {
+                        warnings.Add($"WAD not found: {modPath}");
+                    }
+                }
+                else
+                {
+                    warnings.Add($"WAD not found: {modPath}");
+                }
+            }
+            
+            // Show warnings if any
+            if (warnings.Any())
+            {
+                StatusMessage = $"⚠️ Configuration warnings:\n{string.Join("\n", warnings)}";
+                StatusMessageColor = "Orange";
             }
         }
         catch (Exception ex)
@@ -751,8 +896,6 @@ public class MainWindowViewModel : ReactiveObject
     private void RefreshWadFiles()
     {
         WadFiles.Clear();
-        DataDirectory = _wadDir;
-        
         
         if (!Directory.Exists(_wadDir))
         {
@@ -761,12 +904,12 @@ public class MainWindowViewModel : ReactiveObject
             return;
         }
 
-        // Only scan current directory for IWADs (no subdirectories)
-        var wadFiles = Directory.GetFiles(_wadDir, "*.wad", SearchOption.TopDirectoryOnly)
+        // Scan all subdirectories for IWADs
+        var wadFiles = Directory.GetFiles(_wadDir, "*.wad", SearchOption.AllDirectories)
             .Select(f => new WadFile
             {
                 FullPath = f,
-                RelativePath = Path.GetFileName(f),
+                RelativePath = Path.GetRelativePath(_wadDir, f),
                 LastModified = File.GetLastWriteTime(f)
             })
             .OrderBy(w => w.RelativePath);
@@ -823,11 +966,30 @@ public class MainWindowViewModel : ReactiveObject
         {
             var files = Directory.GetFiles(directory)
                 .Where(f => f.EndsWith(".wad", StringComparison.OrdinalIgnoreCase) ||
-                           f.EndsWith(".pk3", StringComparison.OrdinalIgnoreCase));
+                           f.EndsWith(".pk3", StringComparison.OrdinalIgnoreCase) ||
+                           f.EndsWith(".pk7", StringComparison.OrdinalIgnoreCase) ||
+                           f.EndsWith(".ipk3", StringComparison.OrdinalIgnoreCase));
 
             foreach (var file in files)
             {
                 var fileName = Path.GetFileName(file);
+                
+                // Use WAD parser to check if this is an IWAD
+                // IWADs should only appear in base game list, not as mods
+                try
+                {
+                    var wadInfo = Services.WadParser.Parse(file);
+                    if (wadInfo.IsValid && wadInfo.WadType.Equals("IWAD", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Skip IWADs - they belong in the base game list
+                        continue;
+                    }
+                }
+                catch
+                {
+                    // If we can't parse it, include it anyway (might be a valid mod)
+                }
+                
                 var displayPath = string.IsNullOrEmpty(relativePath) 
                     ? fileName 
                     : Path.Combine(relativePath, fileName);
@@ -933,6 +1095,17 @@ public class MainWindowViewModel : ReactiveObject
             });
         }
         catch { }
+    }
+
+    private bool IsFlatpakPath(string path, out string appId)
+    {
+        if (!string.IsNullOrEmpty(path) && path.StartsWith("flatpak:", StringComparison.OrdinalIgnoreCase))
+        {
+            appId = path.Substring("flatpak:".Length).Trim();
+            return !string.IsNullOrEmpty(appId);
+        }
+        appId = "";
+        return false;
     }
 
     private void LaunchGame()
@@ -1065,68 +1238,86 @@ public class MainWindowViewModel : ReactiveObject
         }
 
         // Determine engine command and arguments
-        string engineCmd;
-        string[] engineArgs;
+        string engineCmd = EngineExecutable;
+        string[] engineArgs = args.ToArray();
 
-        if (_enginePaths.TryGetValue(SelectedEngine, out var enginePath))
+        // Verify engine executable exists
+        if (string.IsNullOrEmpty(engineCmd))
         {
-            if (enginePath.StartsWith("flatpak:"))
-            {
-                // Flatpak launch
-                engineCmd = "flatpak";
-                var appId = enginePath.Substring(8); // Remove "flatpak:" prefix
-                engineArgs = new[] { "run", appId }.Concat(args).ToArray();
-            }
-            else
-            {
-                // Direct executable launch
-                engineCmd = enginePath;
-                engineArgs = args.ToArray();
-                
-                // Only verify executable exists if it's a full path (not a system command)
-                if (Path.IsPathRooted(engineCmd) && !File.Exists(engineCmd))
-                {
-                    StatusMessage = $"❌ Engine not found: {engineCmd}";
-                    StatusMessageColor = "Red";
-                    return;
-                }
-            }
-        }
-        else
-        {
-            // Fallback to selected engine name as command
-            engineCmd = SelectedEngine;
-            engineArgs = args.ToArray();
+            StatusMessage = "❌ Please select an engine executable first";
+            StatusMessageColor = "Red";
+            return;
         }
 
         var psi = new ProcessStartInfo
         {
-            FileName = engineCmd,
             UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            CreateNoWindow = false // Show window for debugging
+            RedirectStandardOutput = false,  // Don't redirect - helps with window display
+            RedirectStandardError = false,   // Don't redirect - helps with window display
+            CreateNoWindow = false
         };
 
-        // Set working directory to where the engine executable is located
-        // This ensures the engine can access its support files (DLLs, data files, etc.)
-        if (!engineCmd.Equals("flatpak", StringComparison.OrdinalIgnoreCase))
+        // Check if this is a Flatpak engine
+        if (IsFlatpakPath(engineCmd, out string flatpakAppId))
         {
+            // Use flatpak run command with necessary permissions
+            psi.FileName = "flatpak";
+            psi.ArgumentList.Add("run");
+            
+            // Grant read-only access to the WADs directory
+            if (!string.IsNullOrEmpty(_wadDir) && Directory.Exists(_wadDir))
+            {
+                psi.ArgumentList.Add($"--filesystem={_wadDir}:ro");
+            }
+            
+            // Add basic display and device permissions (fallback if not set via Flatseal)
+            psi.ArgumentList.Add("--socket=x11");
+            psi.ArgumentList.Add("--socket=wayland");
+            psi.ArgumentList.Add("--socket=pulseaudio");
+            psi.ArgumentList.Add("--device=dri");
+            
+            psi.ArgumentList.Add(flatpakAppId);
+            
+            // Add game arguments
+            foreach (var arg in engineArgs)
+            {
+                psi.ArgumentList.Add(arg);
+            }
+            
+            System.Diagnostics.Debug.WriteLine($"Launching Flatpak: flatpak run --filesystem={_wadDir}:ro --socket=x11 --socket=wayland --socket=pulseaudio --device=dri {flatpakAppId} {string.Join(" ", engineArgs)}");
+        }
+        else
+        {
+            // Regular file-based engine
+            if (!File.Exists(engineCmd))
+            {
+                StatusMessage = $"❌ Engine not found: {engineCmd}";
+                StatusMessageColor = "Red";
+                return;
+            }
+            
+            psi.FileName = engineCmd;
+            
+            // Set working directory to where the engine executable is located
             var engineDir = Path.GetDirectoryName(engineCmd);
             if (!string.IsNullOrEmpty(engineDir) && Directory.Exists(engineDir))
             {
                 psi.WorkingDirectory = engineDir;
             }
-        }
 
-        foreach (var arg in engineArgs)
-        {
-            psi.ArgumentList.Add(arg);
+            foreach (var arg in engineArgs)
+            {
+                psi.ArgumentList.Add(arg);
+            }
+            
+            System.Diagnostics.Debug.WriteLine($"Launching: {engineCmd} {string.Join(" ", engineArgs)}");
         }
 
         // Log the command for debugging
-        var cmdLine = $"{engineCmd} {string.Join(" ", engineArgs)}";
-        System.Diagnostics.Debug.WriteLine($"Launching: {cmdLine}");
+        var cmdLine = IsFlatpakPath(engineCmd, out var appId) 
+            ? $"flatpak run {appId} {string.Join(" ", engineArgs)}"
+            : $"{engineCmd} {string.Join(" ", engineArgs)}";
+        System.Diagnostics.Debug.WriteLine($"Full command: {cmdLine}");
 
         try
         {
@@ -1298,28 +1489,8 @@ public class MainWindowViewModel : ReactiveObject
         }
 
         // Determine engine command
-        string engineCmd;
-        string[] engineArgs;
-
-        if (_enginePaths.TryGetValue(SelectedEngine, out var enginePath))
-        {
-            if (enginePath.StartsWith("flatpak:"))
-            {
-                engineCmd = "flatpak";
-                var appId = enginePath.Substring(8);
-                engineArgs = new[] { "run", appId }.Concat(args).ToArray();
-            }
-            else
-            {
-                engineCmd = enginePath;
-                engineArgs = args.ToArray();
-            }
-        }
-        else
-        {
-            engineCmd = SelectedEngine;
-            engineArgs = args.ToArray();
-        }
+        string engineCmd = EngineExecutable;
+        string[] engineArgs = args.ToArray();
 
         // Build summary text
         var summary = new System.Text.StringBuilder();
@@ -1352,7 +1523,7 @@ public class MainWindowViewModel : ReactiveObject
         }
 
         summary.AppendLine("⚙️ GAME SETTINGS:");
-        summary.AppendLine($"   Engine: {SelectedEngine}");
+        summary.AppendLine($"   Engine: {Path.GetFileName(EngineExecutable)}");
         summary.AppendLine($"   Difficulty: {SelectedDifficulty}");
         summary.AppendLine($"   Starting Map: MAP{StartingMap:D2}");
         summary.AppendLine($"   Game Type: {GameType}");
@@ -1646,6 +1817,9 @@ public class MainWindowViewModel : ReactiveObject
             TimerSwitch = false;
             TurboSwitch = false;
 
+            // Track validation warnings
+            var warnings = new List<string>();
+            
             // Parse arguments
             bool parsingMods = false;
             for (int i = 0; i < args.Length; i++)
@@ -1658,6 +1832,20 @@ public class MainWindowViewModel : ReactiveObject
                             var iwad = args[++i];
                             SelectedBaseGame = WadFiles.FirstOrDefault(w => 
                                 w.RelativePath.Equals(iwad, StringComparison.OrdinalIgnoreCase));
+                            
+                            // Validate IWAD exists
+                            if (SelectedBaseGame != null)
+                            {
+                                if (!File.Exists(SelectedBaseGame.FullPath))
+                                {
+                                    warnings.Add($"IWAD not found: {iwad}");
+                                    SelectedBaseGame = null;
+                                }
+                            }
+                            else
+                            {
+                                warnings.Add($"IWAD not found: {iwad}");
+                            }
                         }
                         parsingMods = false;
                         break;
@@ -1753,17 +1941,38 @@ public class MainWindowViewModel : ReactiveObject
                                 m.RelativePath.Equals(args[i], StringComparison.OrdinalIgnoreCase));
                             if (mod != null)
                             {
-                                ModFiles.Remove(mod);
-                                mod.LoadOrder = SelectedModFiles.Count;
-                                SelectedModFiles.Add(mod);
+                                // Validate mod file exists
+                                if (File.Exists(mod.FullPath))
+                                {
+                                    ModFiles.Remove(mod);
+                                    mod.LoadOrder = SelectedModFiles.Count;
+                                    SelectedModFiles.Add(mod);
+                                }
+                                else
+                                {
+                                    warnings.Add($"WAD not found: {args[i]}");
+                                }
+                            }
+                            else
+                            {
+                                warnings.Add($"WAD not found: {args[i]}");
                             }
                         }
                         break;
                 }
             }
             
-            StatusMessage = $"✅ Settings loaded from: {file.Name}";
-            StatusMessageColor = "LimeGreen";
+            // Show appropriate status message
+            if (warnings.Any())
+            {
+                StatusMessage = $"⚠️ Settings loaded with warnings:\n{string.Join("\n", warnings)}";
+                StatusMessageColor = "Orange";
+            }
+            else
+            {
+                StatusMessage = $"✅ Settings loaded from: {file.Name}";
+                StatusMessageColor = "LimeGreen";
+            }
         }
         catch (Exception ex)
         {
@@ -1986,269 +2195,11 @@ public class MainWindowViewModel : ReactiveObject
         }
     }
 
-    // .NET runtime executables and launcher to exclude from engine detection
-    private static readonly HashSet<string> ExcludedExecutables = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "createdump", "clrjit", "coreclr", "hostfxr", "hostpolicy",
-        "dotnet", "mscordaccore", "mscordbi", "mscorlib",
-        "System.Private.CoreLib", "clretwrc", "clrgc",
-        "DMINLauncher"
-    };
-
-    private void DetectAvailableEngines(string? scanDirectory = null)
-    {
-        _enginePaths.Clear();
-        EngineOptions.Clear();
-        
-        // Use specified directory, or engine directory if not specified
-        var dirToScan = scanDirectory ?? _engineDir;
-        EngineDirectory = dirToScan;
-        
-        if (OperatingSystem.IsWindows())
-        {
-            var currentProcessPath = Environment.ProcessPath;
-            
-            if (Directory.Exists(dirToScan))
-            {
-                try
-                {
-                    var exeFiles = Directory.GetFiles(dirToScan, "*.exe", SearchOption.TopDirectoryOnly);
-                    
-                foreach (var exePath in exeFiles)
-                {
-                    var fileName = Path.GetFileNameWithoutExtension(exePath);
-                    
-                    // Skip the launcher itself by comparing full paths
-                    if (!string.IsNullOrEmpty(currentProcessPath) && 
-                        string.Equals(Path.GetFullPath(exePath), Path.GetFullPath(currentProcessPath), StringComparison.OrdinalIgnoreCase))
-                        continue;
-                    
-                    // Skip any exe that starts with "dminlauncher"
-                    if (fileName.StartsWith("dminlauncher", StringComparison.OrdinalIgnoreCase))
-                        continue;
-                    
-                    // Skip .NET runtime executables and launcher by name
-                    if (ExcludedExecutables.Contains(fileName))
-                        continue;
-                    
-                    // Add all other exe files as potential engines
-                    if (!_enginePaths.ContainsKey(fileName))
-                    {
-                        _enginePaths[fileName] = exePath;
-                    }
-                }
-                }
-                catch { }
-            }
-
-            // If no engines found, add a helpful message
-            if (!_enginePaths.Any())
-            {
-                _enginePaths["No engines found - place .exe in this folder"] = "gzdoom.exe";
-            }
-        }
-        else if (OperatingSystem.IsLinux())
-        {
-            // First, scan the engine directory for executable files
-            if (Directory.Exists(dirToScan))
-            {
-                try
-                {
-                    var files = Directory.GetFiles(dirToScan, "*", SearchOption.TopDirectoryOnly);
-                    
-                    foreach (var filePath in files)
-                    {
-                        var fileName = Path.GetFileName(filePath);
-                        
-                        // Check if file is executable (has execute permission)
-                        try
-                        {
-                            var fileInfo = new FileInfo(filePath);
-                            if (fileInfo.Exists)
-                            {
-                                // On Linux, check if file has execute permission using UnixFileMode
-                                var mode = File.GetUnixFileMode(filePath);
-                                bool isExecutable = (mode & UnixFileMode.UserExecute) != 0 ||
-                                                  (mode & UnixFileMode.GroupExecute) != 0 ||
-                                                  (mode & UnixFileMode.OtherExecute) != 0;
-                                
-                                if (isExecutable && !_enginePaths.ContainsKey(fileName))
-                                {
-                                    _enginePaths[fileName] = filePath;
-                                }
-                            }
-                        }
-                        catch { }
-                    }
-                }
-                catch { }
-            }
-            
-            // Then check for system-installed engines
-            // Check for UZDoom first (higher priority)
-            try
-            {
-                var checkUzdoom = new ProcessStartInfo
-                {
-                    FileName = "which",
-                    Arguments = "uzdoom",
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
-                
-                using var uzdoomProc = Process.Start(checkUzdoom);
-                if (uzdoomProc != null)
-                {
-                    bool exited = uzdoomProc.WaitForExit(1000);
-                    if (!exited)
-                    {
-                        uzdoomProc.Kill();
-                    }
-                    
-                    // Only add uzdoom if it exists and not already in list from directory scan
-                    if (uzdoomProc.ExitCode == 0 && !_enginePaths.ContainsKey("uzdoom (system)"))
-                    {
-                        _enginePaths["uzdoom (system)"] = "uzdoom";
-                    }
-                }
-            }
-            catch { }
-            
-            // Check if gzdoom is actually installed in PATH
-            try
-            {
-                var checkGzdoom = new ProcessStartInfo
-                {
-                    FileName = "which",
-                    Arguments = "gzdoom",
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
-                
-                using var gzdoomProc = Process.Start(checkGzdoom);
-                if (gzdoomProc != null)
-                {
-                    bool exited = gzdoomProc.WaitForExit(1000);
-                    if (!exited)
-                    {
-                        gzdoomProc.Kill();
-                    }
-                    
-                    // Only add gzdoom if it exists and not already in list from directory scan
-                    if (gzdoomProc.ExitCode == 0 && !_enginePaths.ContainsKey("gzdoom (system)"))
-                    {
-                        _enginePaths["gzdoom (system)"] = "gzdoom";
-                    }
-                }
-            }
-            catch { }
-
-            // Check for Flatpak Doom ports - wrapped in comprehensive error handling
-            try
-            {
-                // First check if flatpak is available
-                var checkPsi = new ProcessStartInfo
-                {
-                    FileName = "which",
-                    Arguments = "flatpak",
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
-                
-                
-                using var checkProc = Process.Start(checkPsi);
-                if (checkProc != null)
-                {
-                    bool exited = checkProc.WaitForExit(1000); // 1 second timeout
-                    if (!exited)
-                    {
-                        checkProc.Kill();
-                    }
-                    
-                    // Only proceed if flatpak exists (exit code 0)
-                    if (checkProc.ExitCode == 0)
-                    {
-                        var psi = new ProcessStartInfo
-                        {
-                            FileName = "flatpak",
-                            Arguments = "list --app --columns=application",
-                            RedirectStandardOutput = true,
-                            RedirectStandardError = true,
-                            UseShellExecute = false,
-                            CreateNoWindow = true
-                        };
-                        
-                        using var proc = Process.Start(psi);
-                        if (proc != null)
-                        {
-                            var output = proc.StandardOutput.ReadToEnd();
-                            bool listExited = proc.WaitForExit(5000); // 5 second timeout
-                            
-                            if (!listExited)
-                            {
-                                proc.Kill();
-                                return;
-                            }
-                            
-                            if (proc.ExitCode == 0 && !string.IsNullOrEmpty(output))
-                            {
-                                // Known Doom source port Flatpak IDs
-                                var doomPorts = new Dictionary<string, string>
-                                {
-                                    { "org.zdoom.GZDoom", "GZDoom (flatpak)" },
-                                    { "org.chocolate_doom.ChocolateDoom", "Chocolate Doom (flatpak)" },
-                                    { "io.github.fabiangreffrath.Doom", "Crispy Doom (flatpak)" },
-                                    { "org.doomworld.PrBoom-Plus", "PrBoom+ (flatpak)" },
-                                    { "org.zandronum.Zandronum", "Zandronum (flatpak)" },
-                                    { "io.github.zokumbsp.EternityEngine", "Eternity Engine (flatpak)" },
-                                    { "com.realm667.WadSmoosh", "WadSmoosh (flatpak)" }
-                                };
-                                
-                                foreach (var port in doomPorts)
-                                {
-                                    if (output.Contains(port.Key, StringComparison.OrdinalIgnoreCase))
-                                    {
-                                        _enginePaths[port.Value] = $"flatpak:{port.Key}";
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            catch { }
-            
-            // If no engines found on Linux, prompt user to select directory
-            if (!_enginePaths.Any())
-            {
-                _enginePaths["No engines found - select engine directory or install GZDoom"] = "gzdoom";
-            }
-        }
-
-        // Populate the ComboBox
-        foreach (var engine in _enginePaths.Keys)
-        {
-            EngineOptions.Add(engine);
-        }
-
-        // Set default selection
-        if (EngineOptions.Any())
-        {
-            SelectedEngine = EngineOptions[0];
-        }
-    }
-
     private void ResetSettings()
     {
         // Reset all settings to defaults
         SelectedBaseGame = null;
-        SelectedEngine = EngineOptions.FirstOrDefault() ?? "batocera";
+        EngineExecutable = "";
         SelectedDifficulty = Difficulty.Normal;
         StartingMap = 1;
         GameType = GameType.SinglePlayer;
@@ -2521,6 +2472,29 @@ public class MainWindowViewModel : ReactiveObject
                     return;
                 }
 
+                // Check if Flatpak is currently selected
+                if (IsFlatpakPath(EngineExecutable, out _))
+                {
+                    // Warn about permission requirement with new directory
+                    var oldWadDir = _wadDir;
+                    _wadDir = result; // Temporarily set for warning message
+                    
+                    var confirmed = await ShowFlatpakPermissionWarning(topLevel);
+                    
+                    if (!confirmed)
+                    {
+                        _wadDir = oldWadDir; // Restore old directory
+                        
+                        // Clear the Flatpak selection
+                        EngineExecutable = "";
+                        UseFilePathEngine = true;
+                        
+                        StatusMessage = "⚠️ WADs directory change cancelled. Flatpak engine cleared.";
+                        StatusMessageColor = "Orange";
+                        return;
+                    }
+                }
+
                 _wadDir = result;
                 DataDirectory = result;
                 RefreshWadFiles();
@@ -2539,7 +2513,7 @@ public class MainWindowViewModel : ReactiveObject
         }
     }
 
-    private async Task ChangeEngineDirectory()
+    private async Task ChangeEngineExecutable()
     {
         try
         {
@@ -2554,23 +2528,41 @@ public class MainWindowViewModel : ReactiveObject
                 return;
             }
 
-            var result = await TryOpenFolderPicker(topLevel, "Select Engine Executable Directory", _engineDir);
-
-            if (!string.IsNullOrWhiteSpace(result))
+            var files = await topLevel.StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
             {
-                // Validate directory exists
-                if (!Directory.Exists(result))
+                Title = "Select Engine Executable",
+                AllowMultiple = false,
+                FileTypeFilter = new[]
                 {
-                    StatusMessage = $"⚠️ Directory does not exist: {result}";
+                    new Avalonia.Platform.Storage.FilePickerFileType("Doom Engine")
+                    {
+                        Patterns = OperatingSystem.IsWindows() ? new[] { "*.exe" } : new[] { "*" }
+                    },
+                    new Avalonia.Platform.Storage.FilePickerFileType("All Files")
+                    {
+                        Patterns = new[] { "*.*" }
+                    }
+                }
+            });
+
+            if (files.Count > 0)
+            {
+                var selectedFile = files[0];
+                var path = selectedFile.Path.LocalPath;
+
+                // Validate file exists
+                if (!File.Exists(path))
+                {
+                    StatusMessage = $"⚠️ File does not exist: {path}";
                     StatusMessageColor = "Orange";
                     return;
                 }
 
-                _engineDir = result;
-                DetectAvailableEngines(result);
+                _engineExecutable = path;
+                EngineExecutable = path;
                 SavePaths();
                 
-                StatusMessage = $"✅ Engine directory changed to: {result}";
+                StatusMessage = $"✅ Engine set to: {Path.GetFileName(path)}";
                 StatusMessageColor = "LimeGreen";
             }
         }
@@ -2578,7 +2570,63 @@ public class MainWindowViewModel : ReactiveObject
         {
             StatusMessage = $"❌ Error: {ex.Message}";
             StatusMessageColor = "Red";
-            System.Diagnostics.Debug.WriteLine($"Change engine directory error: {ex}");
+            System.Diagnostics.Debug.WriteLine($"Change engine executable error: {ex}");
+        }
+    }
+
+    private void UpdateDifficultyNames()
+    {
+        DifficultyOptions.Clear();
+
+        if (SelectedBaseGame == null)
+        {
+            // Generic difficulty names
+            DifficultyOptions.Add("Very Easy");
+            DifficultyOptions.Add("Easy");
+            DifficultyOptions.Add("Normal");
+            DifficultyOptions.Add("Hard");
+            DifficultyOptions.Add("Nightmare");
+            return;
+        }
+
+        var gameName = SelectedBaseGame.RelativePath.ToLowerInvariant();
+
+        if (gameName.Contains("doom2") || gameName.Contains("plutonia") || gameName.Contains("tnt") || 
+            gameName.Contains("doom.wad") || gameName.Contains("doom1"))
+        {
+            // Doom / Doom 2 names
+            DifficultyOptions.Add("I'm Too Young To Die");
+            DifficultyOptions.Add("Hey, Not Too Rough");
+            DifficultyOptions.Add("Hurt Me Plenty");
+            DifficultyOptions.Add("Ultra-Violence");
+            DifficultyOptions.Add("Nightmare!");
+        }
+        else if (gameName.Contains("heretic"))
+        {
+            // Heretic names
+            DifficultyOptions.Add("Thou Needeth A Wet-Nurse");
+            DifficultyOptions.Add("Yellowbellies-R-Us");
+            DifficultyOptions.Add("Bringest Them Oneth");
+            DifficultyOptions.Add("Thou Art A Smite-Meister");
+            DifficultyOptions.Add("Black Plague Possesses Thee");
+        }
+        else if (gameName.Contains("hexen"))
+        {
+            // Hexen names
+            DifficultyOptions.Add("Training");
+            DifficultyOptions.Add("Squire");
+            DifficultyOptions.Add("Knight");
+            DifficultyOptions.Add("Warrior");
+            DifficultyOptions.Add("Titan");
+        }
+        else
+        {
+            // Generic for unknown games
+            DifficultyOptions.Add("Very Easy");
+            DifficultyOptions.Add("Easy");
+            DifficultyOptions.Add("Normal");
+            DifficultyOptions.Add("Hard");
+            DifficultyOptions.Add("Nightmare");
         }
     }
 
@@ -2658,9 +2706,8 @@ public class MainWindowViewModel : ReactiveObject
             var dialog = new Avalonia.Controls.Window
             {
                 Title = "Select Flatpak Application",
-                Width = 600,
-                Height = 400,
-                WindowStartupLocation = Avalonia.Controls.WindowStartupLocation.CenterOwner,
+                Width = 450,
+                Height = 350,
                 CanResize = true
             };
 
@@ -2703,7 +2750,8 @@ public class MainWindowViewModel : ReactiveObject
                 Content = "Cancel",
                 Width = 100,
                 HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
-                Margin = new Avalonia.Thickness(5)
+                Margin = new Avalonia.Thickness(5),
+                IsCancel = true  // Makes ESC key close the dialog
             };
 
             okButton.Click += (s, e) =>
@@ -2758,21 +2806,22 @@ public class MainWindowViewModel : ReactiveObject
                 var displayName = $"{selectedApp.name} (flatpak)";
                 var enginePath = $"flatpak:{selectedAppId}";
 
-                // Check if already added
-                if (_enginePaths.ContainsKey(displayName))
+                // Show permission warning
+                var confirmed = await ShowFlatpakPermissionWarning(topLevel);
+                
+                if (!confirmed)
                 {
-                    StatusMessage = $"ℹ️ {displayName} is already in the engine list";
+                    StatusMessage = "❌ Flatpak selection cancelled";
                     StatusMessageColor = "Orange";
-                    SelectedEngine = displayName;
+                    return;
                 }
-                else
-                {
-                    _enginePaths[displayName] = enginePath;
-                    EngineOptions.Add(displayName);
-                    SelectedEngine = displayName;
-                    StatusMessage = $"✅ Added {displayName} to engines";
-                    StatusMessageColor = "LimeGreen";
-                }
+
+                // Set the engine executable to the flatpak path
+                EngineExecutable = enginePath;
+                SavePaths();
+                
+                StatusMessage = $"✅ Set engine to {displayName}";
+                StatusMessageColor = "LimeGreen";
             }
             else
             {
@@ -2785,6 +2834,85 @@ public class MainWindowViewModel : ReactiveObject
             StatusMessageColor = "Red";
             System.Diagnostics.Debug.WriteLine($"Add custom Flatpak error: {ex}");
         }
+    }
+
+    private async Task<bool> ShowFlatpakPermissionWarning(Avalonia.Controls.Window parent)
+    {
+        var warningDialog = new Avalonia.Controls.Window
+        {
+            Title = "Flatpak Permissions",
+            Width = 550,
+            Height = 280,
+            CanResize = false
+        };
+
+        var result = false;
+        
+        var messageText = new Avalonia.Controls.TextBlock
+        {
+            Text = "ℹ️ Flatpak Permissions\n\n" +
+                   $"The Flatpak application will be granted temporary access to:\n" +
+                   $"  • Your WADs folder: {_wadDir}\n" +
+                   $"  • Display (X11/Wayland)\n" +
+                   $"  • GPU device (DRI)\n" +
+                   $"  • Audio (PulseAudio)\n\n" +
+                   "These permissions are temporary and only active while the game is running.\n" +
+                   "They are automatically removed when you close the game.\n\n" +
+                   "Do you want to proceed with this Flatpak selection?",
+            TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+            Margin = new Avalonia.Thickness(15),
+            FontSize = 12
+        };
+
+        var buttonPanel = new Avalonia.Controls.StackPanel
+        {
+            Orientation = Avalonia.Layout.Orientation.Horizontal,
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
+            Margin = new Avalonia.Thickness(15, 0, 15, 15),
+            Spacing = 10
+        };
+
+        var okButton = new Avalonia.Controls.Button
+        {
+            Content = "OK, Proceed",
+            Width = 120,
+            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#406020"))
+        };
+
+        var cancelButton = new Avalonia.Controls.Button
+        {
+            Content = "Cancel",
+            Width = 100,
+            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#604040")),
+            IsCancel = true  // Makes ESC key close the dialog
+        };
+
+        okButton.Click += (s, e) =>
+        {
+            result = true;
+            warningDialog.Close();
+        };
+
+        cancelButton.Click += (s, e) =>
+        {
+            result = false;
+            warningDialog.Close();
+        };
+
+        buttonPanel.Children.Add(cancelButton);
+        buttonPanel.Children.Add(okButton);
+
+        var mainPanel = new Avalonia.Controls.DockPanel
+        {
+            Children = { buttonPanel, messageText }
+        };
+
+        Avalonia.Controls.DockPanel.SetDock(buttonPanel, Avalonia.Controls.Dock.Bottom);
+
+        warningDialog.Content = mainPanel;
+        await warningDialog.ShowDialog(parent);
+
+        return result;
     }
 
     private async void InitializeNetworkInfo()
@@ -2827,6 +2955,107 @@ public class MainWindowViewModel : ReactiveObject
     private void ResetZoom()
     {
         ZoomLevel = 1.0;
+    }
+
+    private async Task ShowExitConfirmation()
+    {
+        var topLevel = Avalonia.Application.Current?.ApplicationLifetime is 
+            Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop 
+            ? desktop.MainWindow : null;
+        
+        if (topLevel == null) return;
+
+        var confirmDialog = new Avalonia.Controls.Window
+        {
+            Title = "Exit Application?",
+            Width = 400,
+            Height = 180,
+            CanResize = false
+        };
+
+        var result = false;
+        
+        var messageText = new Avalonia.Controls.TextBlock
+        {
+            Text = "Are you sure you want to exit?\n\nYour settings will be saved.",
+            TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+            Margin = new Avalonia.Thickness(20),
+            FontSize = 14,
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+        };
+
+        var buttonPanel = new Avalonia.Controls.StackPanel
+        {
+            Orientation = Avalonia.Layout.Orientation.Horizontal,
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+            Margin = new Avalonia.Thickness(20, 10, 20, 20),
+            Spacing = 15
+        };
+
+        var yesButton = new Avalonia.Controls.Button
+        {
+            Content = "Yes",
+            Width = 100,
+            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#604040")),
+            IsDefault = true // Makes Enter key press this button
+        };
+
+        var noButton = new Avalonia.Controls.Button
+        {
+            Content = "No",
+            Width = 100,
+            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#404040")),
+            IsCancel = true // Makes Escape key press this button
+        };
+
+        yesButton.Click += (s, e) =>
+        {
+            result = true;
+            confirmDialog.Close();
+        };
+
+        noButton.Click += (s, e) =>
+        {
+            result = false;
+            confirmDialog.Close();
+        };
+
+        buttonPanel.Children.Add(yesButton);
+        buttonPanel.Children.Add(noButton);
+
+        var mainPanel = new Avalonia.Controls.StackPanel
+        {
+            Children = { messageText, buttonPanel }
+        };
+
+        confirmDialog.Content = mainPanel;
+        
+        // Set focus to Yes button when dialog opens
+        confirmDialog.Opened += (s, e) =>
+        {
+            yesButton.Focus();
+        };
+        
+        await confirmDialog.ShowDialog(topLevel);
+
+        if (result)
+        {
+            ExitApplication();
+        }
+    }
+
+    private void ExitApplication()
+    {
+        // Save paths before exiting
+        SavePaths();
+        
+        // Close the application
+        if (Avalonia.Application.Current?.ApplicationLifetime is 
+            Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            desktop.Shutdown();
+        }
     }
 
     private void LoadMapsFromIWAD(WadFile iwad)
