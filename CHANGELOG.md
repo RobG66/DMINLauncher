@@ -2,10 +2,7 @@
 
 All notable changes to DMINLauncher will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-## [1.1.0] - 2025-01-XX
+## [1.1.0] - 2026-01-25
 
 ### Added
 - 🐧 **Flatpak Engine Support** - Linux/Batocera users can now select Flatpak engines (e.g., org.zdoom.GZDoom)
@@ -28,13 +25,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ✅ **ESC Key Handling** - All dialogs can be closed with ESC key
 - ✅ **Radio Button Visibility** - Properly hidden on Windows, shown on Linux/Batocera
 
-## [1.0.3] - 2024-01-15
+## [1.0.3]
 
 ### Changed
 - 🎨 Switched to fluent compact theme
 - 🔍 Updated search logic
 
-## [1.0.2] - 2024-01-15
+## [1.0.2] 
 
 ### Added
 - 🔧 Automatic launcher.cfg creation with default paths on first run
@@ -56,7 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - ✅ Batocera button now appears on the same line as status message for better space utilization
 
-## [1.0.0] - 2024-01-XX
+## [1.0.0] - First Release
 
 ### Added
 - 🎮 Multi-engine support (GZDoom, Zandronum, Chocolate Doom, etc.)
@@ -95,7 +92,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Built with .NET 9 and Avalonia UI 11.0.10
 - ReactiveUI for MVVM pattern
 - Open.NAT for UPnP port forwarding
-- Support for WAD, PWAD, PK3, PK7, IPK3, and ZIP formats
 
 [1.0.2]: https://github.com/RobG66/DMINLauncher/releases/tag/v1.0.2
 [1.0.0]: https://github.com/RobG66/DMINLauncher/releases/tag/v1.0.0
