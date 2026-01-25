@@ -70,7 +70,7 @@ jobs:
           A modern, cross-platform DOOM source port launcher with multiplayer support, mod management, and UPnP port forwarding.
           
           ### ✨ What's New
-          - See [CHANGELOG.md](https://github.com/RobG66/DMINLauncher/blob/main/CHANGELOG.md) for details
+          - See [CHANGELOG.md](https://github.com/RobG66/DMINLauncher/blob/master/CHANGELOG.md) for details
           
           ### 📥 Installation
           
@@ -85,7 +85,7 @@ jobs:
           3. Run: `./DMINLauncher-linux-x64`
           
           **Batocera:**
-          - See [BATOCERA-SETUP.md](https://github.com/RobG66/DMINLauncher/blob/main/BATOCERA-SETUP.md)
+          - See [BATOCERA-SETUP.md](https://github.com/RobG66/DMINLauncher/blob/master/BATOCERA-SETUP.md)
           - Configuration is automatically created on first run!
           
           ### 📋 Requirements
@@ -93,7 +93,7 @@ jobs:
           - A DOOM source port (GZDoom, Zandronum, etc.)
           
           ### 🔗 Links
-          - [Full Documentation](https://github.com/RobG66/DMINLauncher/blob/main/README.md)
+          - [Full Documentation](https://github.com/RobG66/DMINLauncher/blob/master/README.md)
           - [Report Issues](https://github.com/RobG66/DMINLauncher/issues)
         files: |
           publish/DMINLauncher-win-x64.zip
