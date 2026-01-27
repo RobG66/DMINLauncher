@@ -1,4 +1,4 @@
-# DMINLauncher v1.1.0
+# DMINLauncher v1.2.0
 
 <img width="2173" height="1873" alt="image" src="https://github.com/user-attachments/assets/d62bfd5a-96a2-4c48-8cc5-9aeb778bcafc" />
 
