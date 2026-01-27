@@ -1,7 +1,6 @@
-# DMINLauncher v1.0.3
+# DMINLauncher v1.1.0
 
-<img width="2045" height="1872" alt="image" src="https://github.com/user-attachments/assets/979168ae-bc2c-493c-bb29-076cdd8aded5" />
-
+<img width="2045" height="1872" alt="image" src="https://github.com/user-attachments/assets/8b2744ff-b616-4a1b-940e-5e69f8e38b0e" />
 
 **A cross-platform launcher for DOOM source ports**
 
