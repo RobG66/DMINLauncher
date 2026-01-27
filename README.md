@@ -24,7 +24,7 @@ One of the main goals was to provide a consistent launcher experience that is ea
 - DMFLAGS editor (DMFLAGS, DMFLAGS2, DMFLAGS3)
 - Basic multiplayer support (LAN/Internet hosting)
 - UPnP port forwarding helper
-- Saves settings to launcher.cfg
+- Saves settings to dminlauncher.cfg
 - UI zoom (Ctrl+Plus/Minus)
 - **🆕 Batocera: Save .gzdoom configuration files for EmulationStation integration**
 

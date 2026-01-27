@@ -1,5 +1,6 @@
 using System;
 using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using DMINLauncher.ViewModels;
 
 namespace DMINLauncher.Views;
@@ -14,6 +15,12 @@ public partial class MainWindow : Window
         
         // Track window state changes to handle zoom when restoring from maximized
         PropertyChanged += MainWindow_PropertyChanged;
+        
+        // Wire up application exit event for guaranteed cleanup
+        if (Avalonia.Application.Current?.ApplicationLifetime is IControlledApplicationLifetime lifetime)
+        {
+            lifetime.Exit += OnApplicationExit;
+        }
     }
 
     private void MainWindow_PropertyChanged(object? sender, Avalonia.AvaloniaPropertyChangedEventArgs e)
@@ -37,13 +44,27 @@ public partial class MainWindow : Window
         }
     }
 
-    protected override void OnClosed(EventArgs e)
+    private void OnApplicationExit(object? sender, ControlledApplicationLifetimeExitEventArgs e)
     {
-        // Save settings when window closes
+        // Perform cleanup when application exits (guaranteed to run on graceful shutdown)
         if (DataContext is MainWindowViewModel vm)
         {
             vm.OnClosing();
         }
+        
+        // Unsubscribe from events
+        if (Avalonia.Application.Current?.ApplicationLifetime is IControlledApplicationLifetime lifetime)
+        {
+            lifetime.Exit -= OnApplicationExit;
+        }
+        PropertyChanged -= MainWindow_PropertyChanged;
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        // OnClosed is called when window closes, but Exit event handles cleanup
+        // Just clean up event handlers here
+        PropertyChanged -= MainWindow_PropertyChanged;
         
         base.OnClosed(e);
     }

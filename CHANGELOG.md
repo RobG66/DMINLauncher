@@ -34,7 +34,7 @@ All notable changes to DMINLauncher will be documented in this file.
 ## [1.0.2] 
 
 ### Added
-- 🔧 Automatic launcher.cfg creation with default paths on first run
+- 🔧 Automatic dminlauncher.cfg creation with default paths on first run
 - ⚡ Improved first-time user experience - no manual configuration needed
 - 💾 **Batocera: Save .gzdoom configuration files** - Create game entries for EmulationStation
 - 🎮 Batocera-specific button appears when running on Batocera systems
@@ -43,7 +43,6 @@ All notable changes to DMINLauncher will be documented in this file.
 - 🎯 Automatic map detection from Doom, Doom II, Heretic, Hexen, and Strife IWADs
 
 ### Changed
-- 📝 Batocera users no longer need to manually copy launcher.cfg.batocera-template
 - 🎯 Default configuration is now automatically generated with platform-appropriate paths
 - 📁 .gzdoom files can be saved directly to `/userdata/roms/gzdoom/` on Batocera
 - 🔢 Starting Map now shows actual map names instead of numeric input
@@ -73,7 +72,7 @@ All notable changes to DMINLauncher will be documented in this file.
 - 🧙 Hexen class selection (Fighter, Cleric, Mage)
 - 📦 Full PK3/PK7/ZIP mod archive support
 - 🐧 Flatpak engine support (Linux only)
-- 💾 Configuration persistence in launcher.cfg
+- 💾 Configuration persistence in dminlauncher.cfg
 - 🔍 UI zoom controls (Ctrl+Plus/Minus)
 - 📖 Comprehensive README and Batocera setup guide
 - 🔧 Linux diagnostic script

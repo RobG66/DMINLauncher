@@ -9,7 +9,7 @@
 <AssemblyName>DMINLauncher</AssemblyName>
 
 <!-- Version Information -->
-<Version>1.1.0</Version>
+<Version>1.2.0</Version>
 <AssemblyVersion>1.1.0</AssemblyVersion>
 <FileVersion>1.1.0</FileVersion>
 <InformationalVersion>1.1.0</InformationalVersion>
@@ -22,11 +22,16 @@
 		<PublishSingleFile>true</PublishSingleFile>
 		<PublishTrimmed>false</PublishTrimmed>
 		<IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+		<PackageIcon>icon.png</PackageIcon>
 	</PropertyGroup>
 
 	<ItemGroup>
 		<AvaloniaResource Include="Assets\**" />
 		<AvaloniaResource Include="Styles\**" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <AvaloniaXaml Remove="Styles\CompactNumericUpDown.axaml" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -40,5 +45,12 @@
 		<PackageReference Include="Avalonia.Fonts.Inter" Version="11.0.10" />
 		<PackageReference Include="Avalonia.ReactiveUI" Version="11.0.10" />
 		<PackageReference Include="Open.NAT" Version="2.1.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <None Update="Assets\icon.png">
+	    <Pack>True</Pack>
+	    <PackagePath>\</PackagePath>
+	  </None>
 	</ItemGroup>
 </Project>

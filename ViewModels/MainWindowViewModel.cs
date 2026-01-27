@@ -1,3 +1,12 @@
+using Avalonia.Controls;
+using Avalonia.Input;
+using DMINLauncher.Data;
+using DMINLauncher.Enums;
+using DMINLauncher.Models;
+using DMINLauncher.Services;
+using DMINLauncher.Views;
+using Open.Nat;
+using ReactiveUI;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -10,11 +19,6 @@ using System.Reactive.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using DMINLauncher.Data;
-using DMINLauncher.Enums;
-using DMINLauncher.Models;
-using Open.Nat;
-using ReactiveUI;
 
 namespace DMINLauncher.ViewModels;
 
@@ -22,16 +26,14 @@ namespace DMINLauncher.ViewModels;
 public class MainWindowViewModel : ReactiveObject
 {
     private string _wadDir = "";
-    private string _engineExecutable = "";
-    private LauncherSettings _settings = new();
 
-    // Application version
+    // Application version for titlebar
     public string AppVersion
     {
         get
         {
             var version = Assembly.GetExecutingAssembly().GetName().Version;
-            return version != null ? $"{version.Major}.{version.Minor}.{version.Build}" : "1.0.2";
+            return version != null ? $"{version.Major}.{version.Minor}.{version.Build}" : "";
         }
     }
 
@@ -58,23 +60,42 @@ public class MainWindowViewModel : ReactiveObject
         RefreshWadFiles();
         RefreshModFiles();
         UpdateDmFlagsLists();
-        
-        // Load saved settings after files are populated
-        LoadSavedSettings();
+
+        // Detect if running on Batocera
+        bool isBatocera = Directory.Exists("/userdata/roms/ports");
+
+        var configFile = Path.Combine(Directory.GetCurrentDirectory(), "dminlauncher.cfg");
+
+        // If no config file exists and we're on Batocera, create default config
+        if (isBatocera && !File.Exists(configFile))
+        {
+            ResetSettings();
+        }
+
+        // Load saved settings
+        LoadDefaultSettings(configFile);
         
         // Fetch IP addresses based on loaded network mode
         InitializeNetworkInfo();
+        
+        // Suspend evmapy on Batocera to prevent hotkey interference
+        if (IsBatocera)
+        {
+            // Perform any required setup for Batocera here
+            // Nothing right now
+        }
 
-        // LaunchGameCommand can only execute when IWAD and engine are selected
+        // LaunchGameCommand can only execute when IWAD and engine are selected and not currently launching
         var canLaunch = this.WhenAnyValue(
             x => x.SelectedBaseGame,
             x => x.EngineExecutable,
-            (iwad, engine) => iwad != null && !string.IsNullOrEmpty(engine));
+            x => x.IsLaunching,
+            (iwad, engine, launching) => iwad != null && !string.IsNullOrEmpty(engine) && !launching);
         LaunchGameCommand = ReactiveCommand.Create(LaunchGame, canLaunch);
         ShowLaunchSummaryCommand = ReactiveCommand.CreateFromTask(ShowLaunchSummary);
         RefreshFilesCommand = ReactiveCommand.Create(() =>
         {
-            RefreshWadFiles();
+            //RefreshWadFiles();
             RefreshModFiles();
             
             // Clear any previous configuration warnings when manually refreshing
@@ -86,7 +107,7 @@ public class MainWindowViewModel : ReactiveObject
                 StatusMessageColor = "LimeGreen";
             }
         });
-        SaveSettingsCommand = ReactiveCommand.CreateFromTask(SaveSettings);
+        SaveSettingsCommand = ReactiveCommand.CreateFromTask(AskToSavePresetConfig);
         LoadSettingsCommand = ReactiveCommand.CreateFromTask(LoadSettings);
         TestPortForwardingCommand = ReactiveCommand.CreateFromTask(TestPortForwarding);
         AutoConfigurePortCommand = ReactiveCommand.CreateFromTask(AutoConfigurePort);
@@ -94,10 +115,12 @@ public class MainWindowViewModel : ReactiveObject
         ChangeDataDirectoryCommand = ReactiveCommand.CreateFromTask(ChangeDataDirectory);
         ChangeEngineExecutableCommand = ReactiveCommand.CreateFromTask(ChangeEngineExecutable);
         AddCustomFlatpakCommand = ReactiveCommand.CreateFromTask(AddCustomFlatpak);
-        SaveCurrentSettingsCommand = ReactiveCommand.Create(SavePaths);
+        SaveCurrentSettingsCommand = ReactiveCommand.Create(SaveDefaultConfig);
+        
+        
         
         // Batocera commands
-        SaveBatoceraConfigCommand = ReactiveCommand.CreateFromTask(SaveBatoceraConfig);
+        SaveBatoceraConfigCommand = ReactiveCommand.CreateFromTask(SaveGZDoomConfig);
         
         // Zoom commands
         ZoomInCommand = ReactiveCommand.Create(ZoomIn);
@@ -140,11 +163,19 @@ public class MainWindowViewModel : ReactiveObject
     }
     
     /// <summary>
-    /// Called when the application is closing to save current settings
+    /// Called when the application is closing to save current settings and clean up resources
     /// </summary>
     public void OnClosing()
     {
-        SavePaths();
+        try
+        {
+            // Save current settings
+            SaveDefaultConfig();       
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error during OnClosing: {ex.Message}");
+        }
     }
 
     // Commands
@@ -163,6 +194,7 @@ public class MainWindowViewModel : ReactiveObject
     
     // Batocera commands
     public ReactiveCommand<Unit, Unit> SaveBatoceraConfigCommand { get; }
+    
     
     // Zoom commands
     public ReactiveCommand<Unit, Unit> ZoomInCommand { get; }
@@ -189,8 +221,10 @@ public class MainWindowViewModel : ReactiveObject
     public ObservableCollection<WadFile> WadFiles { get; } = new();
     public ObservableCollection<WadFile> ModFiles { get; } = new();
     public ObservableCollection<WadFile> SelectedModFiles { get; } = new();
-    public ObservableCollection<WadFile> TotalConversionFiles { get; } = new();
     public ObservableCollection<DmFlag> DmFlags1List { get; } = new();
+    public ObservableCollection<DmFlag> DmFlags1Col1 { get; } = new();
+    public ObservableCollection<DmFlag> DmFlags1Col2 { get; } = new();
+    public ObservableCollection<DmFlag> DmFlags1Col3 { get; } = new();
     public ObservableCollection<DmFlag> DmFlags2List { get; } = new();
     public ObservableCollection<DmFlag> DmFlags3List { get; } = new();
     public ObservableCollection<string> AvailableMaps { get; } = new();
@@ -206,7 +240,6 @@ public class MainWindowViewModel : ReactiveObject
             this.RaisePropertyChanged(nameof(CanLaunchGame));
             if (value != null)
             {
-                _settings.BaseGame = value.RelativePath;
                 ShowHexenClassSelection = value.RelativePath.Contains("hexen", StringComparison.OrdinalIgnoreCase);
                 LoadMapsFromIWAD(value);
                 UpdateDifficultyNames(); // Update difficulty names based on selected game
@@ -287,6 +320,13 @@ public class MainWindowViewModel : ReactiveObject
         }
     }
 
+    private bool _isLaunching = false;
+    public bool IsLaunching
+    {
+        get => _isLaunching;
+        set => this.RaiseAndSetIfChanged(ref _isLaunching, value);
+    }
+
     // Property to check if launch is allowed
     public bool CanLaunchGame => SelectedBaseGame != null && !string.IsNullOrEmpty(EngineExecutable);
 
@@ -295,13 +335,6 @@ public class MainWindowViewModel : ReactiveObject
     {
         get => _selectedDifficulty;
         set => this.RaiseAndSetIfChanged(ref _selectedDifficulty, value);
-    }
-
-    private int _startingMap = 1;
-    public int StartingMap
-    {
-        get => _startingMap;
-        set => this.RaiseAndSetIfChanged(ref _startingMap, value);
     }
 
     private string _selectedMapName = "";
@@ -482,8 +515,8 @@ public class MainWindowViewModel : ReactiveObject
         set => this.RaiseAndSetIfChanged(ref _statusMessageColor, value);
     }
 
-    private double _zoomLevel = 1.0;
-    public double ZoomLevel
+    private int _zoomLevel = 100;
+    public int ZoomLevel
     {
         get => _zoomLevel;
         set
@@ -493,7 +526,7 @@ public class MainWindowViewModel : ReactiveObject
         }
     }
 
-    private const double BaseWindowWidth = 800;
+    private const double BaseWindowWidth = 850;
     private const double BaseWindowHeight = 700;
 
     private double _windowWidth = BaseWindowWidth;
@@ -512,8 +545,8 @@ public class MainWindowViewModel : ReactiveObject
 
     private void UpdateWindowSize()
     {
-        WindowWidth = BaseWindowWidth * ZoomLevel;
-        WindowHeight = BaseWindowHeight * ZoomLevel;
+        WindowWidth = BaseWindowWidth * (ZoomLevel / 100.0);
+        WindowHeight = BaseWindowHeight * (ZoomLevel / 100.0);
     }
 
     private string _dataDirectory = "";
@@ -539,75 +572,45 @@ public class MainWindowViewModel : ReactiveObject
 
     private void LoadSavedPaths()
     {
+        _wadDir = "";
+        _engineFilePath = "";
+
         var currentDir = Directory.GetCurrentDirectory();
-        var configFile = Path.Combine(currentDir, "launcher.cfg");
-        
-        // Detect if running on Batocera
-        bool isBatocera = Directory.Exists("/userdata/roms/ports");
-        
-        // If no config file exists and we're on Batocera, create default config
-        if (!File.Exists(configFile) && isBatocera)
-        {
-            CreateBatoceraDefaultConfig(configFile);
-        }
-        
-        // Default paths
-        if (isBatocera)
-        {
-            _wadDir = "/userdata/roms/gzdoom";
-            _engineFilePath = "/usr/bin/gzdoom";
-        }
-        else
-        {
-            _wadDir = Environment.GetEnvironmentVariable("GZDOOM_DATA_DIR") ?? currentDir;
-            _engineFilePath = "";
-        }
-        
-        // Ensure absolute paths
-        if (!Path.IsPathRooted(_wadDir))
-            _wadDir = Path.GetFullPath(_wadDir);
-        
-        // Try to load saved paths from config file
+        var configFile = Path.Combine(currentDir, "dminlauncher.cfg");
+                
         try
         {
             if (File.Exists(configFile))
             {
-                foreach (var line in File.ReadAllLines(configFile))
+                var configData = CfgFileService.ReadFile(configFile);
+                
+                if (configData.TryGetValue("Paths", out var paths))
                 {
-                    var trimmed = line.Trim();
-                    if (string.IsNullOrEmpty(trimmed) || trimmed.StartsWith('#'))
-                        continue;
-                    
-                    var parts = trimmed.Split('=', 2);
-                    if (parts.Length != 2)
-                        continue;
-                    
-                    var key = parts[0].Trim().ToLowerInvariant();
-                    var value = parts[1].Trim();
-                    
-                    if (key == "wads" && !string.IsNullOrEmpty(value) && Directory.Exists(value))
-                        _wadDir = value;
-                    else if (key == "enginefilepath" && !string.IsNullOrEmpty(value))
-                        _engineFilePath = value;
-                    else if (key == "engineflatpak" && !string.IsNullOrEmpty(value))
-                        _engineFlatpakPath = value;
-                    else if (key == "usefilepathengine" && bool.TryParse(value, out var useFilePath))
+                    foreach (var kvp in paths)
                     {
-                        _useFilePathEngine = useFilePath;
-                        _useFlatpakEngine = !useFilePath;
-                    }
-                    // Legacy support for old config format
-                    else if (key == "engineexe" && !string.IsNullOrEmpty(value))
-                    {
-                        if (value.StartsWith("flatpak:", StringComparison.OrdinalIgnoreCase))
-                        {
-                            _engineFlatpakPath = value;
-                            _useFlatpakEngine = true;
-                            _useFilePathEngine = false;
-                        }
-                        else
-                        {
+                        var key = kvp.Key.ToLowerInvariant();
+                        var value = kvp.Value;
+                        
+                        if (key == "wads" && !string.IsNullOrEmpty(value) && Directory.Exists(value))
+                            _wadDir = value;
+                        else if (key == "enginefilepath" && !string.IsNullOrEmpty(value))
                             _engineFilePath = value;
+                        else if (key == "engineflatpak" && !string.IsNullOrEmpty(value))
+                            _engineFlatpakPath = value;
+                    }
+                }
+                
+                if (configData.TryGetValue("Main", out var mainSettings))
+                {
+                    foreach (var kvp in mainSettings)
+                    {
+                        var key = kvp.Key.ToLowerInvariant();
+                        var value = kvp.Value;
+                        
+                        if (key == "usefilepathengine" && bool.TryParse(value, out var useFilePath))
+                        {
+                            _useFilePathEngine = useFilePath;
+                            _useFlatpakEngine = !useFilePath;
                         }
                     }
                 }
@@ -621,106 +624,74 @@ public class MainWindowViewModel : ReactiveObject
         this.RaisePropertyChanged(nameof(EngineExecutable));
     }
     
-    private void CreateBatoceraDefaultConfig(string configFile)
+    
+    private void SaveDefaultConfig()
     {
-        try
-        {
-            var defaultConfig = new[]
-            {
-                "# DMINLauncher Configuration for Batocera",
-                "# Auto-generated on first run",
-                "",
-                "# Directory paths",
-                "wads=/userdata/roms/gzdoom",
-                "enginefilepath=/usr/bin/gzdoom",
-                "engineflatpak=",
-                "usefilepathengine=True",
-                "",
-                "# Game settings",
-                "difficulty=2",
-                "startmap=E1M1",
-                "gametype=0",
-                "playercount=1",
-                "networkmode=0",
-                "hexenclass=0",
-                "",
-                "# Run switches",
-                "avg=False",
-                "fast=False",
-                "nomonsters=False",
-                "respawn=False",
-                "timer=False",
-                "timerminutes=20",
-                "turbo=False",
-                "turbospeed=100",
-                "",
-                "# UI settings",
-                "zoomlevel=1.0",
-                "",
-                "# Selected files will be saved here",
-                "basegame=",
-                "selectedengine=gzdoom (system)"
-            };
-            
-            File.WriteAllLines(configFile, defaultConfig);
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Failed to create Batocera config: {ex.Message}");
-        }
+        var configFile = Path.Combine(Directory.GetCurrentDirectory(), "dminlauncher.cfg");
+        SaveConfigFile(configFile);
     }
-
-    private void SavePaths()
+    
+    private void SaveConfigFile(string configFile)
     {
         try
         {
-            var configFile = Path.Combine(Directory.GetCurrentDirectory(), "launcher.cfg");
+            var sections = new Dictionary<string, Dictionary<string, string>>();
             
-            var lines = new List<string>
+            // [Paths] section - directories and engine paths
+            sections["Paths"] = new Dictionary<string, string>
             {
-                "# DMINLauncher Configuration",
-                "# This file stores your launcher settings",
-                "",
-                "# Directory paths",
-                $"wads={_wadDir}",
-                $"enginefilepath={_engineFilePath}",
-                $"engineflatpak={_engineFlatpakPath}",
-                $"usefilepathengine={UseFilePathEngine}",
-                "",
-                "# Game settings",
-                $"difficulty={(int)SelectedDifficulty}",
-                $"startmap={SelectedMapName}",
-                $"gametype={(int)GameType}",
-                $"playercount={PlayerCount}",
-                $"networkmode={(int)NetworkMode}",
-                $"hexenclass={(int)HexenClass}",
-                "",
-                "# Run switches",
-                $"avg={AvgSwitch}",
-                $"fast={FastSwitch}",
-                $"nomonsters={NoMonstersSwitch}",
-                $"respawn={RespawnSwitch}",
-                $"timer={TimerSwitch}",
-                $"timerminutes={TimerMinutes}",
-                $"turbo={TurboSwitch}",
-                $"turbospeed={TurboSpeed}",
-                "",
-                "# UI settings",
-                $"zoomlevel={ZoomLevel}",
-                "",
-                "# Selected base game",
-                $"basegame={SelectedBaseGame?.RelativePath ?? ""}",
-                "",
-                "# Selected WADs/Mods (in load order)"
+                { "wads", _wadDir },
+                { "enginefilepath", _engineFilePath },
+                { "engineflatpak", _engineFlatpakPath }
             };
             
-            // Add selected mods
+            // [Main] section - main settings
+            sections["Main"] = new Dictionary<string, string>
+            {
+                { "usefilepathengine", UseFilePathEngine.ToString() },
+                { "basegame", SelectedBaseGame?.RelativePath ?? "" }
+            };
+            
+            // [Game] section - gameplay settings
+            sections["Game"] = new Dictionary<string, string>
+            {
+                { "difficulty", ((int)SelectedDifficulty).ToString() },
+                { "startmap", SelectedMapName },
+                { "gametype", ((int)GameType).ToString() },
+                { "playercount", PlayerCount.ToString() },
+                { "networkmode", ((int)NetworkMode).ToString() },
+                { "hexenclass", ((int)HexenClass).ToString() }
+            };
+            
+            // [Switches] section - run switches
+            sections["Switches"] = new Dictionary<string, string>
+            {
+                { "avg", AvgSwitch.ToString() },
+                { "fast", FastSwitch.ToString() },
+                { "nomonsters", NoMonstersSwitch.ToString() },
+                { "respawn", RespawnSwitch.ToString() },
+                { "timer", TimerSwitch.ToString() },
+                { "timerminutes", TimerMinutes.ToString() },
+                { "turbo", TurboSwitch.ToString() },
+                { "turbospeed", TurboSpeed.ToString() }
+            };
+            
+            // [UI] section - interface settings
+            sections["UI"] = new Dictionary<string, string>
+            {
+                { "zoomlevel", ZoomLevel.ToString() }
+            };
+            
+            // [Mods] section - selected mods in load order
+            var mods = new Dictionary<string, string>();
+            int modIndex = 0;
             foreach (var mod in SelectedModFiles.OrderBy(m => m.LoadOrder))
             {
-                lines.Add($"selectedmod={mod.RelativePath}");
+                mods[$"mod{modIndex++}"] = mod.RelativePath;
             }
+            sections["Mods"] = mods;
             
-            File.WriteAllLines(configFile, lines);
+            CfgFileService.WriteFile(configFile, sections);
         }
         catch (Exception ex)
         {
@@ -728,101 +699,142 @@ public class MainWindowViewModel : ReactiveObject
         }
     }
 
-    private void LoadSavedSettings()
+    private void LoadDefaultSettings(string configFile)
     {
+        if (!File.Exists(configFile))
+            return;
+
         try
-        {
-            var configFile = Path.Combine(Directory.GetCurrentDirectory(), "launcher.cfg");
-            if (!File.Exists(configFile)) return;
-            
+        {            
             string? savedBaseGame = null;
             var savedMods = new List<string>();
             var warnings = new List<string>();
-            
-            foreach (var line in File.ReadAllLines(configFile))
+         
+            var configData = CfgFileService.ReadFile(configFile);
+
+            // Load [Paths] section
+            if (configData.TryGetValue("Paths", out var pathsSection))
             {
-                var trimmed = line.Trim();
-                if (string.IsNullOrEmpty(trimmed) || trimmed.StartsWith('#'))
-                    continue;
+                if (pathsSection.TryGetValue("wads", out var wadsPath))
+                    DataDirectory = wadsPath;
                 
-                var parts = trimmed.Split('=', 2);
-                if (parts.Length != 2)
-                    continue;
+                if (pathsSection.TryGetValue("enginefilepath", out var enginePath))
+                    _engineFilePath = enginePath;
                 
-                var key = parts[0].Trim().ToLowerInvariant();
-                var value = parts[1].Trim();
+                if (pathsSection.TryGetValue("engineflatpak", out var flatpakPath))
+                    _engineFlatpakPath = flatpakPath;
+            }
+
+            // Load [Main] section
+            if (configData.TryGetValue("Main", out var mainSection))
+            {
+                if (mainSection.TryGetValue("usefilepathengine", out var useFilePath))
+                    UseFilePathEngine = useFilePath.Equals("true", StringComparison.OrdinalIgnoreCase);
                 
-                switch (key)
+                if (mainSection.TryGetValue("basegame", out var bg))
+                    savedBaseGame = bg;
+            }
+
+            // Load [Game] section
+            if (configData.TryGetValue("Game", out var gameSection))
+            {
+                foreach (var kvp in gameSection)
                 {
-                    case "difficulty":
-                        if (int.TryParse(value, out var diff))
-                            SelectedDifficulty = (Enums.Difficulty)diff;
-                        break;
-                    case "startmap":
-                        // Store map name for later application (after maps are loaded)
-                        SelectedMapName = value;
-                        break;
-                    case "gametype":
-                        if (int.TryParse(value, out var gt))
-                            GameType = (Enums.GameType)gt;
-                        break;
-                    case "playercount":
-                        if (int.TryParse(value, out var pc))
-                            PlayerCount = pc;
-                        break;
-                    case "networkmode":
-                        if (int.TryParse(value, out var nm))
-                            NetworkMode = (Enums.NetworkMode)nm;
-                        break;
-                    case "hexenclass":
-                        if (int.TryParse(value, out var hc))
-                            HexenClass = (Enums.HexenClass)hc;
-                        break;
-                    case "avg":
-                        AvgSwitch = value.Equals("true", StringComparison.OrdinalIgnoreCase);
-                        break;
-                    case "fast":
-                        FastSwitch = value.Equals("true", StringComparison.OrdinalIgnoreCase);
-                        break;
-                    case "nomonsters":
-                        NoMonstersSwitch = value.Equals("true", StringComparison.OrdinalIgnoreCase);
-                        break;
-                    case "respawn":
-                        RespawnSwitch = value.Equals("true", StringComparison.OrdinalIgnoreCase);
-                        break;
-                    case "timer":
-                        TimerSwitch = value.Equals("true", StringComparison.OrdinalIgnoreCase);
-                        break;
-                    case "timerminutes":
-                        if (int.TryParse(value, out var tm))
-                            TimerMinutes = tm;
-                        break;
-                    case "turbo":
-                        TurboSwitch = value.Equals("true", StringComparison.OrdinalIgnoreCase);
-                        break;
-                    case "turbospeed":
-                        if (int.TryParse(value, out var ts))
-                            TurboSpeed = ts;
-                        break;
-                    case "zoomlevel":
-                        if (double.TryParse(value, System.Globalization.NumberStyles.Float, 
-                            System.Globalization.CultureInfo.InvariantCulture, out var zoom))
-                        {
-                            // Clamp to valid range
-                            ZoomLevel = Math.Clamp(zoom, 0.5, 2.0);
-                        }
-                        break;
-                    case "basegame":
-                        savedBaseGame = value;
-                        break;
-                    case "selectedmod":
-                        if (!string.IsNullOrEmpty(value))
-                            savedMods.Add(value);
-                        break;
+                    var key = kvp.Key;
+                    var value = kvp.Value;
+
+                    switch (key)
+                    {
+                        case "difficulty":
+                            if (int.TryParse(value, out var diff))
+                                SelectedDifficulty = (Enums.Difficulty)diff;
+                            break;
+                        case "startmap":
+                            SelectedMapName = value;
+                            break;
+                        case "gametype":
+                            if (int.TryParse(value, out var gt))
+                                GameType = (Enums.GameType)gt;
+                            break;
+                        case "playercount":
+                            if (int.TryParse(value, out var pc))
+                                PlayerCount = pc;
+                            break;
+                        case "networkmode":
+                            if (int.TryParse(value, out var nm))
+                                NetworkMode = (Enums.NetworkMode)nm;
+                            break;
+                        case "hexenclass":
+                            if (int.TryParse(value, out var hc))
+                                HexenClass = (Enums.HexenClass)hc;
+                            break;
+                    }
+                }
+            }
+
+            // Load [Switches] section
+            if (configData.TryGetValue("Switches", out var switchesSection))
+            {
+                foreach (var kvp in switchesSection)
+                {
+                    var key = kvp.Key;
+                    var value = kvp.Value;
+
+                    switch (key)
+                    {
+                        case "avg":
+                            AvgSwitch = value.Equals("true", StringComparison.OrdinalIgnoreCase);
+                            break;
+                        case "fast":
+                            FastSwitch = value.Equals("true", StringComparison.OrdinalIgnoreCase);
+                            break;
+                        case "nomonsters":
+                            NoMonstersSwitch = value.Equals("true", StringComparison.OrdinalIgnoreCase);
+                            break;
+                        case "respawn":
+                            RespawnSwitch = value.Equals("true", StringComparison.OrdinalIgnoreCase);
+                            break;
+                        case "timer":
+                            TimerSwitch = value.Equals("true", StringComparison.OrdinalIgnoreCase);
+                            break;
+                        case "timerminutes":
+                            if (int.TryParse(value, out var tm))
+                                TimerMinutes = tm;
+                            break;
+                        case "turbo":
+                            TurboSwitch = value.Equals("true", StringComparison.OrdinalIgnoreCase);
+                            break;
+                        case "turbospeed":
+                            if (int.TryParse(value, out var ts))
+                                TurboSpeed = ts;
+                            break;
+                    }
+                }
+            }
+
+            // Load [UI] section
+            if (configData.TryGetValue("UI", out var uiSection))
+            {
+                if (uiSection.TryGetValue("zoomlevel", out var zoomStr))
+                {
+                    if (int.TryParse(zoomStr, out var zoom))
+                    {
+                        ZoomLevel = Math.Clamp(zoom, 50, 200);
+                    }
+                }
+            }
+
+            // Load [Mods] section
+            if (configData.TryGetValue("Mods", out var modsSection))
+            {
+                foreach (var kvp in modsSection.OrderBy(x => x.Key))
+                {
+                    if (!string.IsNullOrEmpty(kvp.Value))
+                        savedMods.Add(kvp.Value);
                 }
             }
             
-            // Apply saved selections after files are loaded
+            // Apply saved selections
             if (!string.IsNullOrEmpty(savedBaseGame))
             {
                 SelectedBaseGame = WadFiles.FirstOrDefault(w => 
@@ -840,17 +852,11 @@ public class MainWindowViewModel : ReactiveObject
                 }
             }
             
-            // If no base game selected, auto-select doom2.wad or doom.wad if they exist
+            // If no base game selected, auto-select doom2.wad if it exists
             if (SelectedBaseGame == null)
             {
                 SelectedBaseGame = WadFiles.FirstOrDefault(w => 
                     w.RelativePath.Equals("doom2.wad", StringComparison.OrdinalIgnoreCase));
-                
-                if (SelectedBaseGame == null)
-                {
-                    SelectedBaseGame = WadFiles.FirstOrDefault(w => 
-                        w.RelativePath.Equals("doom.wad", StringComparison.OrdinalIgnoreCase));
-                }
             }
             
             // Load saved mods
@@ -904,6 +910,7 @@ public class MainWindowViewModel : ReactiveObject
             return;
         }
 
+
         // Scan all subdirectories for IWADs
         var wadFiles = Directory.GetFiles(_wadDir, "*.wad", SearchOption.AllDirectories)
             .Select(f => new WadFile
@@ -912,7 +919,7 @@ public class MainWindowViewModel : ReactiveObject
                 RelativePath = Path.GetRelativePath(_wadDir, f),
                 LastModified = File.GetLastWriteTime(f)
             })
-            .OrderBy(w => w.RelativePath);
+            .OrderBy(w => w.RelativePath, StringComparer.OrdinalIgnoreCase);
 
         foreach (var wad in wadFiles)
         {
@@ -924,32 +931,12 @@ public class MainWindowViewModel : ReactiveObject
     {
         ModFiles.Clear();
         if (!Directory.Exists(_wadDir)) return;
-
+              
         var modFiles = new List<WadFile>();
-
-        // Scan current directory and up to 2 levels deep
+             
         try
         {
-            // Level 0: Current directory
-            AddModsFromDirectory(_wadDir, "", modFiles);
-
-            // Level 1: Subdirectories
-            foreach (var subDir in Directory.GetDirectories(_wadDir))
-            {
-                var level1Name = Path.GetFileName(subDir);
-                AddModsFromDirectory(subDir, level1Name, modFiles);
-
-                // Level 2: Sub-subdirectories
-                try
-                {
-                    foreach (var subSubDir in Directory.GetDirectories(subDir))
-                    {
-                        var level2Name = Path.Combine(level1Name, Path.GetFileName(subSubDir));
-                        AddModsFromDirectory(subSubDir, level2Name, modFiles);
-                    }
-                }
-                catch { } // Skip inaccessible subdirectories
-            }
+            GetModFiles(_wadDir, "", modFiles);
         }
         catch { } // Skip if directory is inaccessible
 
@@ -960,11 +947,11 @@ public class MainWindowViewModel : ReactiveObject
         }
     }
 
-    private void AddModsFromDirectory(string directory, string relativePath, List<WadFile> modFiles)
+    private void GetModFiles(string directory, string relativePath, List<WadFile> modFiles)
     {
         try
         {
-            var files = Directory.GetFiles(directory)
+            var files = Directory.GetFiles(directory,"*.*", SearchOption.AllDirectories)
                 .Where(f => f.EndsWith(".wad", StringComparison.OrdinalIgnoreCase) ||
                            f.EndsWith(".pk3", StringComparison.OrdinalIgnoreCase) ||
                            f.EndsWith(".pk7", StringComparison.OrdinalIgnoreCase) ||
@@ -1007,22 +994,76 @@ public class MainWindowViewModel : ReactiveObject
 
     private void UpdateDmFlagsLists()
     {
+        // DMFLAGS1 (split into three explicit columns to guarantee visual order)
         DmFlags1List.Clear();
-        foreach (var kvp in DmFlagsData.DmFlags1)
+        DmFlags1Col1.Clear();
+        DmFlags1Col2.Clear();
+        DmFlags1Col3.Clear();
+
+        var sorted1 = NormalizeAndSortDmFlags(DmFlagsData.DmFlags1);
+        int total1 = sorted1.Count;
+        int columnCount = 3;
+        int rows1 = (total1 + columnCount - 1) / columnCount;
+
+        for (int col = 0; col < columnCount; col++)
         {
-            DmFlags1List.Add(new DmFlag { Label = kvp.Key, BitValue = kvp.Value });
+            for (int row = 0; row < rows1; row++)
+            {
+                int index = row + col * rows1;
+                if (index < total1)
+                {
+                    var kvp = sorted1[index];
+                    var flag = new DmFlag { Label = kvp.Key, BitValue = kvp.Value };
+                    DmFlags1List.Add(flag);
+                    if (col == 0) DmFlags1Col1.Add(flag);
+                    else if (col == 1) DmFlags1Col2.Add(flag);
+                    else DmFlags1Col3.Add(flag);
+                }
+            }
         }
 
+        // DMFLAGS2
         DmFlags2List.Clear();
-        foreach (var kvp in DmFlagsData.DmFlags2)
-        {
-            DmFlags2List.Add(new DmFlag { Label = kvp.Key, BitValue = kvp.Value });
-        }
+        var sorted2 = NormalizeAndSortDmFlags(DmFlagsData.DmFlags2);
+        AddFlagsInColumnOrder(DmFlags2List, sorted2, 3);
 
+        // DMFLAGS3
         DmFlags3List.Clear();
-        foreach (var kvp in DmFlagsData.DmFlags3)
+        var sorted3 = NormalizeAndSortDmFlags(DmFlagsData.DmFlags3);
+        AddFlagsInColumnOrder(DmFlags3List, sorted3, 3);
+    }
+
+    private List<KeyValuePair<string, int>> NormalizeAndSortDmFlags(Dictionary<string, int> source)
+    {
+        return source
+            .Select(kvp => new KeyValuePair<string, int>(kvp.Key.Trim(), kvp.Value))
+            .OrderBy(kvp => kvp.Key, StringComparer.InvariantCultureIgnoreCase)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Adds items to the target list in an order that displays as column-major when rendered in a UniformGrid.
+    /// Sorted items will read alphabetically down column 1, then column 2, then column 3.
+    /// </summary>
+    private void AddFlagsInColumnOrder(ObservableCollection<DmFlag> targetList, List<KeyValuePair<string, int>> sortedItems, int columnCount)
+    {
+        if (sortedItems.Count == 0) return;
+        
+        int rowCount = (sortedItems.Count + columnCount - 1) / columnCount;
+        
+        // UniformGrid fills left-to-right, row-by-row.
+        // To display column-major order, we pick items: col * rowCount + row
+        for (int row = 0; row < rowCount; row++)
         {
-            DmFlags3List.Add(new DmFlag { Label = kvp.Key, BitValue = kvp.Value });
+            for (int col = 0; col < columnCount; col++)
+            {
+                int sourceIndex = col * rowCount + row;
+                if (sourceIndex < sortedItems.Count)
+                {
+                    var kvp = sortedItems[sourceIndex];
+                    targetList.Add(new DmFlag { Label = kvp.Key, BitValue = kvp.Value });
+                }
+            }
         }
     }
 
@@ -1127,35 +1168,48 @@ public class MainWindowViewModel : ReactiveObject
             return;
         }
 
+        // Disable launch button for 10 seconds to prevent double-launching
+        IsLaunching = true;
+        Task.Run(async () =>
+        {
+            await Task.Delay(10000);
+            await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                IsLaunching = false;
+            });
+        });
+
         StatusMessage = "🎮 Preparing to launch Doom...";
         StatusMessageColor = "Yellow";
 
         var args = new System.Collections.Generic.List<string>();
+        var argsForFile = new System.Collections.Generic.List<string>();
 
         args.Add("-iwad");
         args.Add(SelectedBaseGame.FullPath);
-
-        var selectedTCs = TotalConversionFiles.Where(m => m.IsSelected).ToList();
         
-        if (SelectedModFiles.Any() || selectedTCs.Any())
+        argsForFile.Add("-iwad");
+        argsForFile.Add(SelectedBaseGame.RelativePath);
+
+        
+        if (SelectedModFiles.Any())
         {
             args.Add("-file");
+            argsForFile.Add("-file");
             
-            // Add total conversions first (they should load before regular mods)
-            foreach (var tc in selectedTCs)
-            {
-                args.Add(tc.FullPath);
-            }
-            
-            // Then add mods in load order
+            // Add mods in load order
             foreach (var mod in SelectedModFiles)
             {
                 args.Add(mod.FullPath);
+                argsForFile.Add(mod.RelativePath);
             }
         }
 
         args.Add("-skill");
         args.Add(((int)SelectedDifficulty).ToString());
+        
+        argsForFile.Add("-skill");
+        argsForFile.Add(((int)SelectedDifficulty + 1).ToString()); // GZDoom uses 1-5
 
         // Handle starting map
         if (!string.IsNullOrEmpty(SelectedMapName))
@@ -1169,6 +1223,10 @@ public class MainWindowViewModel : ReactiveObject
                     args.Add("-warp");
                     args.Add(SelectedMapName[1].ToString()); // Episode number
                     args.Add(SelectedMapName[3].ToString()); // Map number
+                    
+                    argsForFile.Add("-warp");
+                    argsForFile.Add(SelectedMapName[1].ToString());
+                    argsForFile.Add(SelectedMapName[3].ToString());
                 }
             }
             else if (SelectedMapName.StartsWith("MAP") && SelectedMapName.Length >= 5)
@@ -1179,6 +1237,9 @@ public class MainWindowViewModel : ReactiveObject
                 {
                     args.Add("-warp");
                     args.Add(mapNumber.ToString());
+                    
+                    argsForFile.Add("-warp");
+                    argsForFile.Add(mapNumber.ToString());
                 }
             }
         }
@@ -1191,16 +1252,25 @@ public class MainWindowViewModel : ReactiveObject
         {
             args.Add("+DMFLAGS");
             args.Add(dmFlags1.ToString());
+            argsForFile.Add("+set");
+            argsForFile.Add("dmflags");
+            argsForFile.Add(dmFlags1.ToString());
         }
         if (dmFlags2 != 0)
         {
             args.Add("+dmflags2");
             args.Add(dmFlags2.ToString());
+            argsForFile.Add("+set");
+            argsForFile.Add("dmflags2");
+            argsForFile.Add(dmFlags2.ToString());
         }
         if (dmFlags3 != 0)
         {
             args.Add("+dmflags3");
             args.Add(dmFlags3.ToString());
+            argsForFile.Add("+set");
+            argsForFile.Add("dmflags3");
+            argsForFile.Add(dmFlags3.ToString());
         }
 
         if (GameType != GameType.SinglePlayer)
@@ -1220,23 +1290,46 @@ public class MainWindowViewModel : ReactiveObject
         {
             args.Add("+playerclass");
             args.Add(HexenClass.ToString().ToLower());
+            argsForFile.Add("+playerclass");
+            argsForFile.Add(HexenClass.ToString().ToLower());
         }
 
-        if (AvgSwitch) args.Add("-avg");
-        if (FastSwitch) args.Add("-fast");
-        if (NoMonstersSwitch) args.Add("-nomonsters");
-        if (RespawnSwitch) args.Add("-respawn");
+        if (AvgSwitch)
+        {
+            args.Add("-avg");
+            argsForFile.Add("-avg");
+        }
+        if (FastSwitch)
+        {
+            args.Add("-fast");
+            argsForFile.Add("-fast");
+        }
+        if (NoMonstersSwitch)
+        {
+            args.Add("-nomonsters");
+            argsForFile.Add("-nomonsters");
+        }
+        if (RespawnSwitch)
+        {
+            args.Add("-respawn");
+            argsForFile.Add("-respawn");
+        }
         if (TimerSwitch)
         {
             args.Add("-timer");
             args.Add(TimerMinutes.ToString());
+            argsForFile.Add("-timer");
+            argsForFile.Add(TimerMinutes.ToString());
         }
         if (TurboSwitch)
         {
             args.Add("-turbo");
             args.Add(TurboSpeed.ToString());
+            argsForFile.Add("-turbo");
+            argsForFile.Add(TurboSpeed.ToString());
         }
-
+                
+        
         // Determine engine command and arguments
         string engineCmd = EngineExecutable;
         string[] engineArgs = args.ToArray();
@@ -1247,6 +1340,12 @@ public class MainWindowViewModel : ReactiveObject
             StatusMessage = "❌ Please select an engine executable first";
             StatusMessageColor = "Red";
             return;
+        }
+
+        if (IsBatocera)
+        {
+            // Anything needed for Batocera can be handled here
+            // For now, try to do in the run script
         }
 
         var psi = new ProcessStartInfo
@@ -1260,22 +1359,12 @@ public class MainWindowViewModel : ReactiveObject
         // Check if this is a Flatpak engine
         if (IsFlatpakPath(engineCmd, out string flatpakAppId))
         {
-            // Use flatpak run command with necessary permissions
+            // Grant filesystem permission (if not already granted)
+            GrantFlatpakPermissions(flatpakAppId, _wadDir);
+            
+            // Use flatpak run command
             psi.FileName = "flatpak";
             psi.ArgumentList.Add("run");
-            
-            // Grant read-only access to the WADs directory
-            if (!string.IsNullOrEmpty(_wadDir) && Directory.Exists(_wadDir))
-            {
-                psi.ArgumentList.Add($"--filesystem={_wadDir}:ro");
-            }
-            
-            // Add basic display and device permissions (fallback if not set via Flatseal)
-            psi.ArgumentList.Add("--socket=x11");
-            psi.ArgumentList.Add("--socket=wayland");
-            psi.ArgumentList.Add("--socket=pulseaudio");
-            psi.ArgumentList.Add("--device=dri");
-            
             psi.ArgumentList.Add(flatpakAppId);
             
             // Add game arguments
@@ -1284,7 +1373,7 @@ public class MainWindowViewModel : ReactiveObject
                 psi.ArgumentList.Add(arg);
             }
             
-            System.Diagnostics.Debug.WriteLine($"Launching Flatpak: flatpak run --filesystem={_wadDir}:ro --socket=x11 --socket=wayland --socket=pulseaudio --device=dri {flatpakAppId} {string.Join(" ", engineArgs)}");
+            System.Diagnostics.Debug.WriteLine($"Launching Flatpak: flatpak run {flatpakAppId} {string.Join(" ", engineArgs)}");
         }
         else
         {
@@ -1390,15 +1479,10 @@ public class MainWindowViewModel : ReactiveObject
         args.Add("-iwad");
         args.Add(SelectedBaseGame.FullPath);
 
-        var selectedTCs = TotalConversionFiles.Where(m => m.IsSelected).ToList();
         
-        if (SelectedModFiles.Any() || selectedTCs.Any())
+        if (SelectedModFiles.Any())
         {
             args.Add("-file");
-            foreach (var tc in selectedTCs)
-            {
-                args.Add(tc.FullPath);
-            }
             foreach (var mod in SelectedModFiles)
             {
                 args.Add(mod.FullPath);
@@ -1502,16 +1586,6 @@ public class MainWindowViewModel : ReactiveObject
         summary.AppendLine($"   {SelectedBaseGame.RelativePath}");
         summary.AppendLine();
 
-        if (selectedTCs.Any())
-        {
-            summary.AppendLine("🔄 TOTAL CONVERSIONS:");
-            foreach (var tc in selectedTCs)
-            {
-                summary.AppendLine($"   • {tc.RelativePath}");
-            }
-            summary.AppendLine();
-        }
-
         if (SelectedModFiles.Any())
         {
             summary.AppendLine("📦 MODS (Load Order):");
@@ -1525,7 +1599,7 @@ public class MainWindowViewModel : ReactiveObject
         summary.AppendLine("⚙️ GAME SETTINGS:");
         summary.AppendLine($"   Engine: {Path.GetFileName(EngineExecutable)}");
         summary.AppendLine($"   Difficulty: {SelectedDifficulty}");
-        summary.AppendLine($"   Starting Map: MAP{StartingMap:D2}");
+        summary.AppendLine($"   Starting Map: {SelectedMapName}");
         summary.AppendLine($"   Game Type: {GameType}");
         if (GameType != GameType.SinglePlayer)
         {
@@ -1627,7 +1701,7 @@ public class MainWindowViewModel : ReactiveObject
         }
     }
 
-    private async Task SaveSettings()
+    private async Task AskToSavePresetConfig()
     {
         try
         {
@@ -1637,19 +1711,24 @@ public class MainWindowViewModel : ReactiveObject
             
             if (topLevel == null) return;
 
-            var defaultName = $"preset-{DateTime.Now:yyyy-MM-dd-HHmm}.gzdoom";
+            // Create smart preset name
+            var baseName = SelectedBaseGame?.RelativePath?.Replace(".wad", "") ?? "preset";
+            var gameTypeStr = GameType == GameType.SinglePlayer ? "" : $"-{GameType.ToString().ToLower()}";
+            var modCount = SelectedModFiles.Count;
+            var modStr = modCount > 0 ? $"-{modCount}mods" : "";
+            var defaultName = $"{baseName}{gameTypeStr}{modStr}.cfg";
             
             // Use modern StorageProvider API
             var file = await topLevel.StorageProvider.SaveFilePickerAsync(new Avalonia.Platform.Storage.FilePickerSaveOptions
             {
-                Title = "Save Doom Preset",
+                Title = "Save Configuration",
                 SuggestedFileName = defaultName,
-                DefaultExtension = "gzdoom",
+                DefaultExtension = "cfg",
                 FileTypeChoices = new[]
                 {
-                    new Avalonia.Platform.Storage.FilePickerFileType("Doom Preset")
+                    new Avalonia.Platform.Storage.FilePickerFileType("Configuration File")
                     {
-                        Patterns = new[] { "*.gzdoom" }
+                        Patterns = new[] { "*.cfg" }
                     }
                 },
                 ShowOverwritePrompt = true
@@ -1657,108 +1736,9 @@ public class MainWindowViewModel : ReactiveObject
 
             if (file == null) return;
 
-            var args = new System.Collections.Generic.List<string>();
-
-            // Base IWAD
-            if (SelectedBaseGame != null)
-            {
-                args.Add("-iwad");
-                args.Add(SelectedBaseGame.RelativePath);
-            }
-
-            // Mods in load order
-            if (SelectedModFiles.Any())
-            {
-                args.Add("-file");
-                foreach (var mod in SelectedModFiles)
-                {
-                    args.Add(mod.RelativePath);
-                }
-            }
-
-            // Difficulty
-            args.Add("-skill");
-            args.Add(((int)SelectedDifficulty).ToString());
-
-            // Starting map
-            if (!string.IsNullOrEmpty(SelectedMapName))
-            {
-                // Check if it's ExMy format (E1M1) or MAPxx format
-                if (SelectedMapName.StartsWith("E") && SelectedMapName.Length == 4)
-                {
-                    // ExMy format: -warp episode map (e.g., E2M3 -> -warp 2 3)
-                    if (char.IsDigit(SelectedMapName[1]) && char.IsDigit(SelectedMapName[3]))
-                    {
-                        args.Add("-warp");
-                        args.Add(SelectedMapName[1].ToString()); // Episode number
-                        args.Add(SelectedMapName[3].ToString()); // Map number
-                    }
-                }
-                else if (SelectedMapName.StartsWith("MAP") && SelectedMapName.Length >= 5)
-                {
-                    // MAPxx format: -warp xx (e.g., MAP07 -> -warp 7)
-                    var mapNum = SelectedMapName.Substring(3);
-                    if (int.TryParse(mapNum, out var mapNumber))
-                    {
-                        args.Add("-warp");
-                        args.Add(mapNumber.ToString());
-                    }
-                }
-            }
-
-            // DMFLAGS
-            var dmFlags1 = DmFlags1List.Where(f => f.IsChecked).Sum(f => f.BitValue);
-            var dmFlags2 = DmFlags2List.Where(f => f.IsChecked).Sum(f => f.BitValue);
-            var dmFlags3 = DmFlags3List.Where(f => f.IsChecked).Sum(f => f.BitValue);
-
-            if (dmFlags1 != 0)
-            {
-                args.Add("+set");
-                args.Add("dmflags");
-                args.Add(dmFlags1.ToString());
-            }
-            if (dmFlags2 != 0)
-            {
-                args.Add("+set");
-                args.Add("dmflags2");
-                args.Add(dmFlags2.ToString());
-            }
-            if (dmFlags3 != 0)
-            {
-                args.Add("+set");
-                args.Add("dmflags3");
-                args.Add(dmFlags3.ToString());
-            }
-
-            // Run switches
-            if (AvgSwitch) args.Add("-avg");
-            if (FastSwitch) args.Add("-fast");
-            if (NoMonstersSwitch) args.Add("-nomonsters");
-            if (RespawnSwitch) args.Add("-respawn");
-            if (TimerSwitch)
-            {
-                args.Add("-timer");
-                args.Add(TimerMinutes.ToString());
-            }
-            if (TurboSwitch)
-            {
-                args.Add("-turbo");
-                args.Add(TurboSpeed.ToString());
-            }
-
-            // Hexen class
-            if (ShowHexenClassSelection)
-            {
-                args.Add("+playerclass");
-                args.Add(HexenClass.ToString().ToLower());
-            }
-
-            // Write to file
-            using var stream = await file.OpenWriteAsync();
-            using var writer = new StreamWriter(stream);
-            await writer.WriteAsync(string.Join(" ", args));
+            SaveConfigFile(file.Path.LocalPath);
             
-            StatusMessage = $"✅ Settings saved to: {file.Name}";
+            StatusMessage = $"✅ Configuration saved to: {file.Name}";
             StatusMessageColor = "LimeGreen";
         }
         catch (Exception ex)
@@ -1782,13 +1762,13 @@ public class MainWindowViewModel : ReactiveObject
             // Use modern StorageProvider API
             var files = await topLevel.StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
             {
-                Title = "Load Doom Preset",
+                Title = "Load Configuration",
                 AllowMultiple = false,
                 FileTypeFilter = new[]
                 {
-                    new Avalonia.Platform.Storage.FilePickerFileType("Doom Preset")
+                    new Avalonia.Platform.Storage.FilePickerFileType("Configuration File")
                     {
-                        Patterns = new[] { "*.gzdoom" }
+                        Patterns = new[] { "*.cfg" }
                     },
                     new Avalonia.Platform.Storage.FilePickerFileType("All Files")
                     {
@@ -1800,179 +1780,10 @@ public class MainWindowViewModel : ReactiveObject
             if (files.Count == 0) return;
 
             var file = files[0];
-            using var stream = await file.OpenReadAsync();
-            using var reader = new StreamReader(stream);
-            var content = await reader.ReadToEndAsync();
-            var args = content.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-
-            // Reset current selections
-            SelectedModFiles.Clear();
-            foreach (var flag in DmFlags1List) flag.IsChecked = false;
-            foreach (var flag in DmFlags2List) flag.IsChecked = false;
-            foreach (var flag in DmFlags3List) flag.IsChecked = false;
-            AvgSwitch = false;
-            FastSwitch = false;
-            NoMonstersSwitch = false;
-            RespawnSwitch = false;
-            TimerSwitch = false;
-            TurboSwitch = false;
-
-            // Track validation warnings
-            var warnings = new List<string>();
+            LoadDefaultSettings(file.Path.LocalPath);
             
-            // Parse arguments
-            bool parsingMods = false;
-            for (int i = 0; i < args.Length; i++)
-            {
-                switch (args[i])
-                {
-                    case "-iwad":
-                        if (i + 1 < args.Length)
-                        {
-                            var iwad = args[++i];
-                            SelectedBaseGame = WadFiles.FirstOrDefault(w => 
-                                w.RelativePath.Equals(iwad, StringComparison.OrdinalIgnoreCase));
-                            
-                            // Validate IWAD exists
-                            if (SelectedBaseGame != null)
-                            {
-                                if (!File.Exists(SelectedBaseGame.FullPath))
-                                {
-                                    warnings.Add($"IWAD not found: {iwad}");
-                                    SelectedBaseGame = null;
-                                }
-                            }
-                            else
-                            {
-                                warnings.Add($"IWAD not found: {iwad}");
-                            }
-                        }
-                        parsingMods = false;
-                        break;
-
-                    case "-file":
-                        parsingMods = true;
-                        break;
-
-                    case "-skill":
-                        if (i + 1 < args.Length && int.TryParse(args[++i], out var skill))
-                        {
-                            SelectedDifficulty = (Difficulty)skill;
-                        }
-                        parsingMods = false;
-                        break;
-
-                    case "-warp":
-                        if (i + 1 < args.Length && int.TryParse(args[++i], out var map))
-                        {
-                            StartingMap = map;
-                        }
-                        parsingMods = false;
-                        break;
-
-                    case "+set":
-                        if (i + 2 < args.Length)
-                        {
-                            var key = args[++i];
-                            var value = int.TryParse(args[++i], out var v) ? v : 0;
-                            ApplyDmFlags(key, value);
-                        }
-                        parsingMods = false;
-                        break;
-
-                    case "-avg":
-                        AvgSwitch = true;
-                        parsingMods = false;
-                        break;
-
-                    case "-fast":
-                        FastSwitch = true;
-                        parsingMods = false;
-                        break;
-
-                    case "-nomonsters":
-                        NoMonstersSwitch = true;
-                        parsingMods = false;
-                        break;
-
-                    case "-respawn":
-                        RespawnSwitch = true;
-                        parsingMods = false;
-                        break;
-
-                    case "-timer":
-                        TimerSwitch = true;
-                        if (i + 1 < args.Length && int.TryParse(args[++i], out var timer))
-                        {
-                            TimerMinutes = timer;
-                        }
-                        parsingMods = false;
-                        break;
-
-                    case "-turbo":
-                        TurboSwitch = true;
-                        if (i + 1 < args.Length && int.TryParse(args[++i], out var turbo))
-                        {
-                            TurboSpeed = turbo;
-                        }
-                        parsingMods = false;
-                        break;
-
-                    case "+playerclass":
-                        if (i + 1 < args.Length)
-                        {
-                            var className = args[++i];
-                            HexenClass = className.ToLower() switch
-                            {
-                                "fighter" => Enums.HexenClass.Fighter,
-                                "cleric" => Enums.HexenClass.Cleric,
-                                "mage" => Enums.HexenClass.Mage,
-                                _ => Enums.HexenClass.Fighter
-                            };
-                        }
-                        parsingMods = false;
-                        break;
-
-                    default:
-                        if (parsingMods && !args[i].StartsWith("-") && !args[i].StartsWith("+"))
-                        {
-                            // Find mod in available mods and add to load order
-                            var mod = ModFiles.FirstOrDefault(m => 
-                                m.RelativePath.Equals(args[i], StringComparison.OrdinalIgnoreCase));
-                            if (mod != null)
-                            {
-                                // Validate mod file exists
-                                if (File.Exists(mod.FullPath))
-                                {
-                                    ModFiles.Remove(mod);
-                                    mod.LoadOrder = SelectedModFiles.Count;
-                                    SelectedModFiles.Add(mod);
-                                }
-                                else
-                                {
-                                    warnings.Add($"WAD not found: {args[i]}");
-                                }
-                            }
-                            else
-                            {
-                                warnings.Add($"WAD not found: {args[i]}");
-                            }
-                        }
-                        break;
-                }
-            }
-            
-            // Show appropriate status message
-            if (warnings.Any())
-            {
-                StatusMessage = $"⚠️ Settings loaded with warnings:\n{string.Join("\n", warnings)}";
-                StatusMessageColor = "Orange";
-            }
-            else
-            {
-                StatusMessage = $"✅ Settings loaded from: {file.Name}";
-                StatusMessageColor = "LimeGreen";
-            }
+            StatusMessage = $"✅ Configuration loaded from: {file.Name}";
+            StatusMessageColor = "LimeGreen";
         }
         catch (Exception ex)
         {
@@ -2197,11 +2008,31 @@ public class MainWindowViewModel : ReactiveObject
 
     private void ResetSettings()
     {
-        // Reset all settings to defaults
-        SelectedBaseGame = null;
-        EngineExecutable = "";
+        // Store current selected IWAD path to preserve it (not the object reference, since RefreshWadFiles will clear the collection)
+        var currentSelectedIwadPath = SelectedBaseGame?.RelativePath;
+        
+        // Set Batocera-specific defaults if running on Batocera
+        if (IsBatocera)
+        {
+            // Set default engine path for Batocera
+            _engineFilePath = Path.Exists("/usr/bin/gzdoom") ? "/usr/bin/gzdoom" : "";
+            UseFilePathEngine = true;
+            this.RaisePropertyChanged(nameof(EngineExecutable));
+            
+            // Set default WADs directory for Batocera
+            _wadDir = Path.Exists("/userdata/roms/gzdoom") ? "/userdata/roms/gzdoom" : "";
+            DataDirectory = _wadDir;
+        }
+        // For non-Batocera systems, don't touch the paths at all
+
+        if (!string.IsNullOrEmpty(_wadDir))
+        {
+            RefreshWadFiles();
+            RefreshModFiles();
+        }
+
+        // Reset game settings to defaults
         SelectedDifficulty = Difficulty.Normal;
-        StartingMap = 1;
         GameType = GameType.SinglePlayer;
         PlayerCount = 1;
         HexenClass = HexenClass.Fighter;
@@ -2225,18 +2056,24 @@ public class MainWindowViewModel : ReactiveObject
         }
         SelectedModFiles.Clear();
         
-        // Reset total conversion selections
-        foreach (var tc in TotalConversionFiles)
-        {
-            tc.IsSelected = false;
-        }
-        
         // Reset DMFLAGS
         foreach (var flag in DmFlags1List) flag.IsChecked = false;
         foreach (var flag in DmFlags2List) flag.IsChecked = false;
         foreach (var flag in DmFlags3List) flag.IsChecked = false;
         
-        StatusMessage = "✅ All settings reset to defaults";
+        // Restore the selected IWAD by finding it in the refreshed collection
+        if (!string.IsNullOrEmpty(currentSelectedIwadPath))
+        {
+            SelectedBaseGame = WadFiles.FirstOrDefault(w => 
+                w.RelativePath.Equals(currentSelectedIwadPath, StringComparison.OrdinalIgnoreCase));
+        }
+        
+        // Set the starting map AFTER restoring the IWAD (so it doesn't get overwritten by the SelectedBaseGame setter)
+        SelectedMapName = "MAP01";
+        
+        StatusMessage = IsBatocera 
+            ? "✅ Settings reset to Batocera defaults (paths and IWAD preserved)" 
+            : "✅ Settings reset to defaults (paths and IWAD preserved)";
         StatusMessageColor = "LimeGreen";
     }
 
@@ -2499,7 +2336,7 @@ public class MainWindowViewModel : ReactiveObject
                 DataDirectory = result;
                 RefreshWadFiles();
                 RefreshModFiles();
-                SavePaths();
+                SaveDefaultConfig();
                 
                 StatusMessage = $"✅ WADs directory changed to: {result}";
                 StatusMessageColor = "LimeGreen";
@@ -2558,9 +2395,8 @@ public class MainWindowViewModel : ReactiveObject
                     return;
                 }
 
-                _engineExecutable = path;
                 EngineExecutable = path;
-                SavePaths();
+                SaveDefaultConfig();
                 
                 StatusMessage = $"✅ Engine set to: {Path.GetFileName(path)}";
                 StatusMessageColor = "LimeGreen";
@@ -2818,7 +2654,7 @@ public class MainWindowViewModel : ReactiveObject
 
                 // Set the engine executable to the flatpak path
                 EngineExecutable = enginePath;
-                SavePaths();
+                SaveDefaultConfig();
                 
                 StatusMessage = $"✅ Set engine to {displayName}";
                 StatusMessageColor = "LimeGreen";
@@ -2934,27 +2770,74 @@ public class MainWindowViewModel : ReactiveObject
         }
     }
 
+    
+
+    private void GrantFlatpakPermissions(string appId, string wadPath)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(wadPath) || !Directory.Exists(wadPath))
+            {
+                System.Diagnostics.Debug.WriteLine($"Cannot grant Flatpak permissions: Invalid WAD directory '{wadPath}'");
+                return;
+            }
+            
+            // Grant read-only filesystem access to WAD directory
+            var psi = new ProcessStartInfo
+            {
+                FileName = "flatpak",
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+            psi.ArgumentList.Add("override");
+            psi.ArgumentList.Add("--user");
+            psi.ArgumentList.Add($"--filesystem={wadPath}:ro");
+            psi.ArgumentList.Add(appId);
+            
+            var process = Process.Start(psi);
+            if (process != null)
+            {
+                process.WaitForExit();
+                if (process.ExitCode == 0)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Granted Flatpak {appId} access to {wadPath}");
+                }
+                else
+                {
+                    var stderr = process.StandardError.ReadToEnd();
+                    System.Diagnostics.Debug.WriteLine($"Failed to grant Flatpak permissions: {stderr}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error granting Flatpak permissions: {ex.Message}");
+        }
+    }
+
     private void ZoomIn()
     {
-        // Increase zoom by 5%, max 2.0x (200%)
-        if (ZoomLevel < 2.0)
+        // Increase zoom by 5%, max 200%
+        if (ZoomLevel < 200)
         {
-            ZoomLevel = Math.Min(2.0, ZoomLevel + 0.05);
+            ZoomLevel = Math.Min(200, ZoomLevel + 5);
         }
     }
 
     private void ZoomOut()
     {
-        // Decrease zoom by 5%, min 0.5x (50%)
-        if (ZoomLevel > 0.5)
+        // Decrease zoom by 5%, min 50%
+        if (ZoomLevel > 50)
         {
-            ZoomLevel = Math.Max(0.5, ZoomLevel - 0.05);
+            ZoomLevel = Math.Max(50, ZoomLevel - 5);
         }
     }
 
     private void ResetZoom()
     {
-        ZoomLevel = 1.0;
+        ZoomLevel = 100;
     }
 
     private async Task ShowExitConfirmation()
@@ -2968,16 +2851,16 @@ public class MainWindowViewModel : ReactiveObject
         var confirmDialog = new Avalonia.Controls.Window
         {
             Title = "Exit Application?",
-            Width = 400,
-            Height = 180,
+            Width = 450,
+            Height = 200,
             CanResize = false
         };
 
-        var result = false;
+        string? result = null;
         
         var messageText = new Avalonia.Controls.TextBlock
         {
-            Text = "Are you sure you want to exit?\n\nYour settings will be saved.",
+            Text = "Do you want to exit DMINLauncher?",
             TextWrapping = Avalonia.Media.TextWrapping.Wrap,
             Margin = new Avalonia.Thickness(20),
             FontSize = 14,
@@ -2990,39 +2873,53 @@ public class MainWindowViewModel : ReactiveObject
             Orientation = Avalonia.Layout.Orientation.Horizontal,
             HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
             Margin = new Avalonia.Thickness(20, 10, 20, 20),
-            Spacing = 15
+            Spacing = 10
         };
 
-        var yesButton = new Avalonia.Controls.Button
+        var cancelButton = new Avalonia.Controls.Button
         {
-            Content = "Yes",
-            Width = 100,
-            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#604040")),
-            IsDefault = true // Makes Enter key press this button
-        };
-
-        var noButton = new Avalonia.Controls.Button
-        {
-            Content = "No",
-            Width = 100,
+            Content = "Cancel",
+            Width = 120,
             Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#404040")),
             IsCancel = true // Makes Escape key press this button
         };
 
-        yesButton.Click += (s, e) =>
+        var exitButton = new Avalonia.Controls.Button
         {
-            result = true;
+            Content = "Exit",
+            Width = 120,
+            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#604040"))
+        };
+
+        var exitAndSaveButton = new Avalonia.Controls.Button
+        {
+            Content = "Exit and Save",
+            Width = 120,
+            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#406020")),
+            IsDefault = true // Makes Enter key press this button
+        };
+
+        cancelButton.Click += (s, e) =>
+        {
+            result = "cancel";
             confirmDialog.Close();
         };
 
-        noButton.Click += (s, e) =>
+        exitButton.Click += (s, e) =>
         {
-            result = false;
+            result = "exit";
             confirmDialog.Close();
         };
 
-        buttonPanel.Children.Add(yesButton);
-        buttonPanel.Children.Add(noButton);
+        exitAndSaveButton.Click += (s, e) =>
+        {
+            result = "save";
+            confirmDialog.Close();
+        };
+
+        buttonPanel.Children.Add(cancelButton);
+        buttonPanel.Children.Add(exitButton);
+        buttonPanel.Children.Add(exitAndSaveButton);
 
         var mainPanel = new Avalonia.Controls.StackPanel
         {
@@ -3031,26 +2928,31 @@ public class MainWindowViewModel : ReactiveObject
 
         confirmDialog.Content = mainPanel;
         
-        // Set focus to Yes button when dialog opens
+        // Set focus to Exit and Save button when dialog opens
         confirmDialog.Opened += (s, e) =>
         {
-            yesButton.Focus();
+            exitAndSaveButton.Focus();
         };
         
         await confirmDialog.ShowDialog(topLevel);
 
-        if (result)
+        if (result == "save")
         {
+            // Save settings before exiting
+            SaveDefaultConfig();
             ExitApplication();
         }
+        else if (result == "exit")
+        {
+            // Exit without saving
+            ExitApplication();
+        }
+        // If cancel or null, do nothing (stay in app)
     }
 
     private void ExitApplication()
     {
-        // Save paths before exiting
-        SavePaths();
-        
-        // Close the application
+        // Just trigger shutdown - OnClosed will handle cleanup automatically
         if (Avalonia.Application.Current?.ApplicationLifetime is 
             Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
         {
@@ -3084,23 +2986,7 @@ public class MainWindowViewModel : ReactiveObject
                     SelectedMapName = AvailableMaps[0];
                 }
             }
-            else
-            {
-                // Fallback: add a default starting map based on game type
-                if (iwad.RelativePath.Contains("doom2", StringComparison.OrdinalIgnoreCase) ||
-                    iwad.RelativePath.Contains("plutonia", StringComparison.OrdinalIgnoreCase) ||
-                    iwad.RelativePath.Contains("tnt", StringComparison.OrdinalIgnoreCase) ||
-                    iwad.RelativePath.Contains("hexen", StringComparison.OrdinalIgnoreCase))
-                {
-                    AvailableMaps.Add("MAP01");
-                    SelectedMapName = "MAP01";
-                }
-                else
-                {
-                    AvailableMaps.Add("E1M1");
-                    SelectedMapName = "E1M1";
-                }
-            }
+            
         }
         catch (Exception ex)
         {
@@ -3111,7 +2997,7 @@ public class MainWindowViewModel : ReactiveObject
         }
     }
 
-    private async Task SaveBatoceraConfig()
+    private async Task SaveGZDoomConfig()
     {
         try
         {
@@ -3257,3 +3143,4 @@ public class MainWindowViewModel : ReactiveObject
         }
     }
 }
+

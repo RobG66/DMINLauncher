@@ -22,10 +22,10 @@ echo "[2/5] Committing changes..."
 git add .
 git commit -m "Release v$VERSION"
 
-# Push to main
+# Push to master
 echo ""
-echo "[3/5] Pushing to main branch..."
-git push origin main
+echo "[3/5] Pushing to master branch..."
+git push origin master
 
 # Create and push tag
 echo ""

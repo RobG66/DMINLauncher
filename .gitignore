@@ -57,7 +57,7 @@ bld/
 !**/packages/build/
 
 # User-specific launcher configuration
-launcher.cfg
+dminlauncher.cfg
 
 # Temporary test files
 test*.txt

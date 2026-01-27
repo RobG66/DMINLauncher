@@ -14,7 +14,7 @@
 
 3. **Configuration:**
    
-The launcher automatically creates a `launcher.cfg` file with default Batocera paths on first run. No manual configuration needed!
+The launcher automatically creates a `dminlauncher.cfg` file with default Batocera paths on first run. No manual configuration needed!
 
 ## Default Paths
 
@@ -91,7 +91,7 @@ This single-line format is exactly what Batocera's GZDoom system requires. The f
 
 ### No WADs detected
 1. Check WAD folder: `ls /userdata/roms/gzdoom/*.wad`
-2. Verify paths in `launcher.cfg`:
+2. Verify paths in `dminlauncher.cfg`:
    ```
    wads=/userdata/roms/gzdoom
    engine=/userdata/roms/ports/engines
