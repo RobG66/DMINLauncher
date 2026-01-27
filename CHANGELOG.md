@@ -4,19 +4,12 @@ All notable changes to DMINLauncher will be documented in this file.
 
 ## [1.2.0] - 2026-01-27
 
-### Added
-- 🎨 **Button Coloring** - Color-coded action buttons (Launch=Green, Exit=Red, Reset=Orange, etc.)
-- 🔗 **Smart Preset Naming** - Auto-generated filenames like `doom2-deathmatch-3mods.cfg`
-- 📊 **Port Forwarding Test** - Two-column layout with fixed sizing and horizontal scrolling
-- ⚙️ **Config Management Refactor** - Better separation between default config and custom presets
-- 🎯 **Improved Starting Map Reset** - MAP01 properly set after ResetSettings with selected IWAD
 
 ### Changed
 - 🗂️ **Simplified Mod Management** - Removed Total Conversions tab, unified all WADs/mods in one location
 - 🔄 **ResetSettings Behavior** - Now preserves engine paths, WAD paths, and selected IWAD
 - 💾 **Save/Load Logic** - SaveSettings/LoadSettings now handle .cfg files, not .gzdoom presets
 - 🎨 **Port Forwarding UI** - Compact two-column layout prevents UI jumping during tests
-- 🔘 **Button Styling** - Removed emojis from port forwarding buttons, added consistent coloring
 
 ### Fixed
 - ✅ **Layout Stability** - Port forwarding test no longer causes border size changes
