@@ -37,13 +37,15 @@ Flatpack support is a 'work in progress'
 
 ## Creating an entry in the Ports folder
 
+Note: evmapy should be ended as shown in the script example.  Batocera hotkeys are currently not supported.  You will have to use a keyboard and press escape to first access the doom port menu.  Then in the controls settings you can map your start button to show the menu, as well as your other game controller settings.  
+
 Create a file: `/userdata/roms/ports/DMINLauncher.sh`
 
 ```bash
 #!/bin/bash
 
 cd /userdata/roms/ports/DMINLauncher
-export DISPLAY=:0
+killall evmapy
 ./DMINLauncher-linux-x64
 ```
 
