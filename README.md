@@ -10,8 +10,8 @@ One of the main goals was to provide a consistent launcher experience that is ea
 
  If you wish, you can help support this and other projects I am working on.  If not, that is ok too.
 
-- [PayPal](https://paypal.me/RGanshorn?country.x=CA&locale.x=en_US)
-- [Buy Me a Coffee](https://buymeacoffee.com/silverballb)
+ Found a bug, want a feature?  Let me know!
+
 ---
 
 ## Features
