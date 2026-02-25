@@ -732,7 +732,7 @@ public class MainWindowViewModel : ReactiveObject
                     UseFilePathEngine = useFilePath.Equals("true", StringComparison.OrdinalIgnoreCase);
                 
                 if (mainSection.TryGetValue("basegame", out var bg))
-                    savedBaseGame = bg;
+                    savedBaseGame = bg?.Replace('\\', '/');
             }
 
             // Load [Game] section
@@ -830,7 +830,7 @@ public class MainWindowViewModel : ReactiveObject
                 foreach (var kvp in modsSection.OrderBy(x => x.Key))
                 {
                     if (!string.IsNullOrEmpty(kvp.Value))
-                        savedMods.Add(kvp.Value);
+                        savedMods.Add(kvp.Value.Replace('\\', '/'));
                 }
             }
             
@@ -912,11 +912,12 @@ public class MainWindowViewModel : ReactiveObject
 
 
         // Scan all subdirectories for IWADs
-        var wadFiles = Directory.GetFiles(_wadDir, "*.wad", SearchOption.AllDirectories)
+        var wadFiles = Directory.GetFiles(_wadDir, "*", SearchOption.AllDirectories)
+            .Where(f => f.EndsWith(".wad", StringComparison.OrdinalIgnoreCase))
             .Select(f => new WadFile
             {
                 FullPath = f,
-                RelativePath = Path.GetRelativePath(_wadDir, f),
+                RelativePath = Path.GetRelativePath(_wadDir, f).Replace('\\', '/'),
                 LastModified = File.GetLastWriteTime(f)
             })
             .OrderBy(w => w.RelativePath, StringComparer.OrdinalIgnoreCase);
@@ -959,8 +960,6 @@ public class MainWindowViewModel : ReactiveObject
 
             foreach (var file in files)
             {
-                var fileName = Path.GetFileName(file);
-                
                 // Use WAD parser to check if this is an IWAD
                 // IWADs should only appear in base game list, not as mods
                 try
@@ -976,10 +975,9 @@ public class MainWindowViewModel : ReactiveObject
                 {
                     // If we can't parse it, include it anyway (might be a valid mod)
                 }
-                
-                var displayPath = string.IsNullOrEmpty(relativePath) 
-                    ? fileName 
-                    : Path.Combine(relativePath, fileName);
+
+                // Use forward slashes so relative paths are consistent across platforms
+                var displayPath = Path.GetRelativePath(directory, file).Replace('\\', '/');
 
                 modFiles.Add(new WadFile
                 {

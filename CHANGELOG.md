@@ -2,6 +2,16 @@
 
 All notable changes to DMINLauncher will be documented in this file.
 
+## [1.3.0] - 2026-01-28
+
+### Fixed
+- ✅ **Linux Path Separators** - Relative paths now always use forward slashes (`/`), config files are portable between Windows and Linux
+- ✅ **Subdirectory Mod Paths** - Mods in subdirectories now display and restore with their full relative path instead of bare filename
+- ✅ **WAD Search Case Sensitivity** - File extension matching (`.wad`, `.WAD`, `.pk3`, etc.) is case-insensitive on Linux; saved path lookups also use case-insensitive comparison
+- ✅ **Show Maps Button** - Now displays all map names from the selected IWAD instead of truncating at 5
+- ✅ **Show Maps Visibility** - Button correctly appears whenever a base game is selected (any valid IWAD has at least one map)
+- ✅ **Version Display** - AssemblyVersion was out of sync with Version; title bar now correctly shows 1.3.0
+
 ## [1.2.0] - 2026-01-27
 
 

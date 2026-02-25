@@ -39,8 +39,12 @@ public class WadFile : ReactiveObject
     }
 
     public string DisplayName => RelativePath;
-    
+
     public string Stats => WadInfo?.Summary ?? "";
-    
+
     public string MapList => WadInfo?.MapListSummary ?? "";
+
+    public string FullMapList => WadInfo is { MapNames.Count: > 0 } info
+        ? string.Join(System.Environment.NewLine, info.MapNames)
+        : "";
 }

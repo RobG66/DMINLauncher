@@ -179,7 +179,7 @@
                                                        FontWeight="Bold"
                                                        VerticalAlignment="Center"/>
                                             <Button Grid.Column="1" 
-                                                    IsVisible="{Binding SelectedBaseGame.MapList, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                                    IsVisible="{Binding SelectedBaseGame, Converter={x:Static ObjectConverters.IsNotNull}}"
                                                     Content="Show Maps"
                                                     FontSize="10"
                                                     Padding="6,2"
@@ -195,7 +195,7 @@
                                                                 MaxWidth="400"
                                                                 MaxHeight="300">
                                                             <ScrollViewer>
-                                                                <TextBlock Text="{Binding SelectedBaseGame.MapList}" 
+                                                                <TextBlock Text="{Binding SelectedBaseGame.FullMapList}" 
                                                                            FontSize="11" 
                                                                            Foreground="White"
                                                                            TextWrapping="Wrap"/>
