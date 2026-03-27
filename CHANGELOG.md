@@ -2,6 +2,20 @@
 
 All notable changes to DMINLauncher will be documented in this file.
 
+## [1.4.0] - 2026-01-29
+
+### Added
+- 🚪 **Window Close Confirmation** - Clicking the X button or pressing Alt+F4 now shows the Exit / Save and Exit / Cancel dialog instead of closing immediately
+- 💾 **Load .gzdoom Config** - New button to load a saved `.gzdoom` config file and apply all its command-line arguments back to the UI
+- 🎮 **GZDoom Command Line Interpreter** - Full parser for `.gzdoom` preset args: `-iwad`, `-file`, `-skill`, `-warp`, `-deathmatch`, `-host`, `-timer`, `-turbo`, `+set`, `+dmflags`, `+dmflags2`, `+dmflags3`, `+playerclass`, and boolean switches (`-avg`, `-fast`, `-nomonsters`, `-respawn`)
+- 📂 **Smart File Dialog Start Locations** - Load/Save Config dialogs open in the program directory; Load/Save GZDoom dialogs open in the configured WAD folder
+
+### Changed
+- 🔗 **Cross-Platform File URI Handling** - All file picker dialogs now use a safe `file:///` URI builder that works correctly on both Windows and Linux (fixes silent failures on Linux paths)
+
+### Fixed
+- ✅ **Load GZDoom Config** - Previously missing; save existed but load did not
+
 ## [1.3.0] - 2026-01-28
 
 ### Fixed
