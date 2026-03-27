@@ -2,7 +2,7 @@
 
 All notable changes to DMINLauncher will be documented in this file.
 
-## [1.4.0] - 2026-01-29
+## [1.4.0] - 2026-03-27
 
 ### Added
 - 🚪 **Window Close Confirmation** - Clicking the X button or pressing Alt+F4 now shows the Exit / Save and Exit / Cancel dialog instead of closing immediately
