@@ -669,102 +669,107 @@
             </TabControl>
         </StackPanel>
 
-        <!-- Bottom Status and Controls -->
-        <Grid Grid.Row="2" RowDefinitions="Auto,Auto" Margin="0,10,0,0">
-                <!-- Row 0: Status Message (left) and Batocera Button (right) -->
-                <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
-                    <!-- Status Message -->
-                    <TextBlock Grid.Column="0"
-                               Text="{Binding StatusMessage}" 
-                               FontWeight="Bold"
+        <!-- Bottom Toolbar -->
+        <Border Grid.Row="2"
+                Background="#B5181818"
+                BorderBrush="#50707070"
+                BorderThickness="0,1,0,0"
+                Padding="10,8"
+                Margin="0,8,0,0">
+            <StackPanel Spacing="7">
+
+                <!-- Status Row -->
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="5"
+                                IsVisible="{Binding IsBatocera}">
+                        <Button Command="{Binding LoadBatoceraConfigCommand}"
+                                Content="Load .gzdoom Config"
+                                Background="#204060" Foreground="White"
+                                FontWeight="SemiBold" FontSize="11" Padding="10,3"/>
+                        <Button Command="{Binding SaveBatoceraConfigCommand}"
+                                Content="Save .gzdoom Config"
+                                Background="#604020" Foreground="White"
+                                FontWeight="SemiBold" FontSize="11" Padding="10,3"/>
+                    </StackPanel>
+                    <TextBlock Text="{Binding StatusMessage}"
+                               FontWeight="SemiBold" FontSize="11"
                                Foreground="{Binding StatusMessageColor}"
                                TextWrapping="Wrap"
                                VerticalAlignment="Center"/>
-                    
-                    <!-- Batocera Config Button (only visible on Batocera) -->
-                    <Button Grid.Column="1"
-                            Command="{Binding SaveBatoceraConfigCommand}"
-                            IsVisible="{Binding IsBatocera}"
-                            Background="#604020"
-                            FontWeight="SemiBold"
-                            Padding="12,4"
-                            Margin="10,0,0,0">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <TextBlock Text="Save .gzdoom Config" VerticalAlignment="Center" FontSize="12"/>
-                        </StackPanel>
-                    </Button>
-                </Grid>
-                
-                <!-- Row 1: Zoom Controls (left) and Action Buttons (right) -->
-                <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto">
+                </DockPanel>
+
+                <!-- Divider -->
+                <Border Height="1" Background="#30808080"/>
+
+                <!-- Button Row -->
+                <Grid ColumnDefinitions="Auto,*,Auto">
+
                     <!-- Zoom Controls -->
-                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="5">
-                        <Button Command="{Binding ZoomOutCommand}" 
-                                ToolTip.Tip="Zoom Out (Ctrl -)"
-                                Background="Transparent"
-                                Width="32" Height="32" Padding="2">
-                            <Image Source="/Assets/zoom-out.png" />
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="3" VerticalAlignment="Center">
+                        <Button Command="{Binding ZoomOutCommand}" ToolTip.Tip="Zoom Out (Ctrl -)"
+                                Background="Transparent" Width="26" Height="26" Padding="2">
+                            <Image Source="/Assets/zoom-out.png"/>
                         </Button>
-                        <Button Command="{Binding ZoomInCommand}" 
-                                ToolTip.Tip="Zoom In (Ctrl +)"
-                                Background="Transparent"
-                                Width="32" Height="32" Padding="2">
-                            <Image Source="/Assets/zoom-in.png" />
+                        <Button Command="{Binding ZoomInCommand}" ToolTip.Tip="Zoom In (Ctrl +)"
+                                Background="Transparent" Width="26" Height="26" Padding="2">
+                            <Image Source="/Assets/zoom-in.png"/>
                         </Button>
-                        <Button Command="{Binding ResetZoomCommand}" 
-                                ToolTip.Tip="Reset Zoom (Ctrl 0)"
-                                Background="Transparent"
-                                Width="32" Height="32" Padding="2">
-                            <Image Source="/Assets/zoom-reset.png" />
+                        <Button Command="{Binding ResetZoomCommand}" ToolTip.Tip="Reset Zoom (Ctrl 0)"
+                                Background="Transparent" Width="26" Height="26" Padding="2">
+                            <Image Source="/Assets/zoom-reset.png"/>
                         </Button>
-                        <TextBlock Text="{Binding ZoomLevel, StringFormat='{}{0}%'}" 
-                                   VerticalAlignment="Center" Margin="5,0,0,0"
-                                   FontWeight="SemiBold" MinWidth="40"/>
+                        <TextBlock Text="{Binding ZoomLevel, StringFormat='{}{0}%'}"
+                                   VerticalAlignment="Center" FontSize="11"
+                                   FontWeight="SemiBold" MinWidth="34" Margin="3,0,0,0"/>
                     </StackPanel>
-                    
+
                     <!-- Spacer -->
                     <Border Grid.Column="1"/>
-                    
-                    <!-- Action Buttons -->
-                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10">
-                        <Button Content="Exit" Command="{Binding ShowExitConfirmationCommand}" 
-                               ToolTip.Tip="Save and exit the application"
-                               Background="#A04040" 
-                               Foreground="White"
-                               FontWeight="SemiBold"/>
-                        <Button Content="Reset" Command="{Binding ResetSettingsCommand}" 
-                               ToolTip.Tip="Reset all settings to default values"
-                               Background="#A06020" 
-                               Foreground="White"
-                               FontWeight="SemiBold"/>
-                        <Button Content="Save Default" Command="{Binding SaveCurrentSettingsCommand}" 
-                               ToolTip.Tip="Save current settings as defaults for next launch"
-                               Background="#2060A0" 
-                               Foreground="White"
-                               FontWeight="SemiBold"/>
-                        <Button Content="Load Preset" Command="{Binding LoadSettingsCommand}"
-                               ToolTip.Tip="Load a saved .gzdoom preset file"
-                               Background="#6040A0" 
-                               Foreground="White"
-                               FontWeight="SemiBold"/>
-                        <Button Content="Save Preset" Command="{Binding SaveSettingsCommand}"
-                               ToolTip.Tip="Save current settings to a .gzdoom preset file"
-                               Background="#6040A0" 
-                               Foreground="White"
-                               FontWeight="SemiBold"/>
-                        <Button Content="Summary" Command="{Binding ShowLaunchSummaryCommand}" 
-                               ToolTip.Tip="Preview all settings and command line"
-                               Background="DarkSlateGray"
-                               Foreground="White"
-                               FontWeight="SemiBold"/>
-                        <Button Content="Launch" Command="{Binding LaunchGameCommand}" 
-                               Background="#406020" 
-                               Foreground="White" 
-                               FontWeight="Bold" 
-                               FontSize="14"/>
+
+                    <!-- File Operation Buttons -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
+                        <Button Content="Save Default"
+                                Command="{Binding SaveCurrentSettingsCommand}"
+                                ToolTip.Tip="Save current settings as defaults for next launch"
+                                Background="#1E5799" Foreground="White"
+                                FontWeight="SemiBold" FontSize="11" Padding="7,3"/>
+                        <Button Content="Load Config"
+                                Command="{Binding LoadConfigCommand}"
+                                ToolTip.Tip="Load settings from a .cfg file"
+                                Background="#1A5E40" Foreground="White"
+                                FontWeight="SemiBold" FontSize="11" Padding="7,3"/>
+                        <Button Content="Save Config"
+                                Command="{Binding SaveConfigCommand}"
+                                ToolTip.Tip="Save current settings to a .cfg file"
+                                Background="#1A5E40" Foreground="White"
+                                FontWeight="SemiBold" FontSize="11" Padding="7,3"/>
+                        <Border Width="1" Background="#45808080" Margin="2,2"/>
+                        <Button Content="Reset Settings"
+                                Command="{Binding ResetSettingsCommand}"
+                                ToolTip.Tip="Reset all settings to default values"
+                                Background="#7A3A0A" Foreground="White"
+                                FontWeight="SemiBold" FontSize="11" Padding="7,3"/>
+                        <Border Width="1" Background="#45808080" Margin="2,2"/>
+                        <Button Content="Exit"
+                                Command="{Binding ShowExitConfirmationCommand}"
+                                ToolTip.Tip="Save and exit the application"
+                                Background="#7A1A1A" Foreground="White"
+                                FontWeight="SemiBold" FontSize="11" Padding="7,3"/>
+                        <Button Content="Summary"
+                                Command="{Binding ShowLaunchSummaryCommand}"
+                                ToolTip.Tip="Preview all settings and command line"
+                                Background="#2F4F4F" Foreground="White"
+                                FontWeight="SemiBold" FontSize="11" Padding="7,3"/>
+                        <Button Content="Launch"
+                                Command="{Binding LaunchGameCommand}"
+                                Background="#2D5A1B" Foreground="White"
+                                FontWeight="Bold" FontSize="11" Padding="7,3"/>
                     </StackPanel>
+
                 </Grid>
-            </Grid>
+            </StackPanel>
+        </Border>
+
         </Grid>
         </Panel>
     </Viewbox>
