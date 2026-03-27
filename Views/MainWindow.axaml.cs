@@ -8,14 +8,15 @@ namespace DMINLauncher.Views;
 public partial class MainWindow : Window
 {
     private WindowState _previousState = WindowState.Normal;
+    private bool _allowClose = false;
 
     public MainWindow()
     {
         InitializeComponent();
-        
+
         // Track window state changes to handle zoom when restoring from maximized
         PropertyChanged += MainWindow_PropertyChanged;
-        
+
         // Wire up application exit event for guaranteed cleanup
         if (Avalonia.Application.Current?.ApplicationLifetime is IControlledApplicationLifetime lifetime)
         {
@@ -58,6 +59,25 @@ public partial class MainWindow : Window
             lifetime.Exit -= OnApplicationExit;
         }
         PropertyChanged -= MainWindow_PropertyChanged;
+    }
+
+    protected override async void OnClosing(WindowClosingEventArgs e)
+    {
+        if (!_allowClose)
+        {
+            // Cancel the close immediately; show the confirmation dialog asynchronously.
+            e.Cancel = true;
+            base.OnClosing(e);
+
+            if (DataContext is MainWindowViewModel vm && await vm.ConfirmExitAsync(this))
+            {
+                _allowClose = true;
+                Close();
+            }
+            return;
+        }
+
+        base.OnClosing(e);
     }
 
     protected override void OnClosed(EventArgs e)

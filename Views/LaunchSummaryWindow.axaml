@@ -23,6 +23,8 @@
             <Button DockPanel.Dock="Bottom"
                     Content="Close"
                     HorizontalAlignment="Center"
+                    Background="#2D5A1B" Foreground="White"
+                    FontWeight="Bold" FontSize="11" Padding="7,3"
                     Margin="5"
                     Command="{Binding CloseCommand}"/>
 

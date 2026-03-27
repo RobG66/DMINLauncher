@@ -1,0 +1,39 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:models="using:DMINLauncher.Models"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="450" d:DesignHeight="350"
+        x:Class="DMINLauncher.Views.FlatpakPickerWindow"
+        Title="Select Flatpak Application"
+        Width="450" Height="350"
+        CanResize="True"
+        WindowStartupLocation="CenterOwner">
+    <Panel>
+        <Border Background="#202020"/>
+        <DockPanel Margin="15">
+            <TextBlock x:Name="HeaderText" DockPanel.Dock="Top"
+                       Foreground="White" FontSize="13" FontWeight="Bold"
+                       Margin="0,0,0,10" TextWrapping="Wrap"/>
+            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal"
+                        HorizontalAlignment="Right" Spacing="8" Margin="0,10,0,0">
+                <Button x:Name="CancelButton" Content="Cancel"
+                        Background="#404040" Foreground="White" FontSize="11" Padding="7,3"/>
+                <Button x:Name="AddButton" Content="Add Selected"
+                        Background="#2D5A1B" Foreground="White" FontWeight="Bold" FontSize="11" Padding="7,3"/>
+            </StackPanel>
+            <ListBox x:Name="AppListBox" Background="#60101010"
+                     BorderBrush="#80FFFFFF" BorderThickness="1"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="models:FlatpakApp">
+                        <StackPanel Margin="4,3">
+                            <TextBlock Text="{Binding Name}" Foreground="White" FontWeight="Bold" FontSize="12"/>
+                            <TextBlock Text="{Binding AppId}" Foreground="#AAB0B8" FontSize="10"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </DockPanel>
+    </Panel>
+</Window>

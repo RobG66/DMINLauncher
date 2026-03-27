@@ -1,0 +1,30 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="270" d:DesignHeight="140"
+        x:Class="DMINLauncher.Views.ThreeButtonDialogWindow"
+        Title="Dialog"
+        Width="270" Height="140"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner">
+    <Panel>
+        <Border Background="#202020"/>
+        <DockPanel Margin="15">
+            <StackPanel x:Name="ButtonPanel"
+                        DockPanel.Dock="Bottom"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        Spacing="8"
+                        Margin="0,12,0,0"/>
+            <ScrollViewer>
+                <TextBlock x:Name="MessageText"
+                           Foreground="White"
+                           FontSize="13"
+                           TextWrapping="Wrap"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"/>
+            </ScrollViewer>
+        </DockPanel>
+    </Panel>
+</Window>

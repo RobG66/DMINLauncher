@@ -59,6 +59,9 @@ bld/
 # User-specific launcher configuration
 dminlauncher.cfg
 
+# Local architecture / AI context notes
+ARCHITECTURE.md
+
 # Temporary test files
 test*.txt
 test*.log
