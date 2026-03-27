@@ -1,10 +1,10 @@
-# DMINLauncher v1.3.0
+# DMINLauncher v1.4.0
 
 <img width="2173" height="1873" alt="image" src="https://github.com/user-attachments/assets/d62bfd5a-96a2-4c48-8cc5-9aeb778bcafc" />
 
 **A cross-platform launcher for DOOM source ports**
 
-DMINLauncher is a simple launcher for DOOM engines.  It is built with .NET 9 and Avalonia UI. 
+DMINLauncher is a simple launcher for DOOM engines.  It is built with .NET 10 and Avalonia UI. 
 
 One of the main goals was to provide a consistent launcher experience that is easy to use with Batocera, Retrobat or standalone in either Windows or Linux.  Cross-platform compatibility was essential for this to happen.  
 
