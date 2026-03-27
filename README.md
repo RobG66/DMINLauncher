@@ -104,9 +104,4 @@ See [BATOCERA-SETUP.md](BATOCERA-SETUP.md) for full setup instructions.
 - [Avalonia UI](https://avaloniaui.net/) - UI framework
 - [ReactiveUI](https://www.reactiveui.net/) - MVVM framework
 - [Open.NAT](https://github.com/lontivero/Open.NAT) - UPnP library
-- id Software - For DOOM
-- DOOM Community - For decades of mods
 
----
-
-**Version:** 1.0.2  
